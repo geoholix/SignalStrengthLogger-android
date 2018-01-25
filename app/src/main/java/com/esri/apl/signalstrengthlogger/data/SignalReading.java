@@ -1,6 +1,5 @@
 package com.esri.apl.signalstrengthlogger.data;
 
-import android.arch.persistence.room.Entity;
 import android.content.Context;
 import android.location.Location;
 import android.os.Build;
@@ -11,19 +10,18 @@ import com.esri.apl.signalstrengthlogger.R;
 import java.security.InvalidParameterException;
 import java.util.Date;
 
-@Entity
 public class SignalReading {
 
     private Context context;
 
     private Location location = null;
-    private int signalStrength = 0;
+    private int _signalStrength = 0;
     // TODO GMT?
-    private Date date = new Date();
-    private String osName = "Android";
-    private String osVersion = Integer.toString(Build.VERSION.SDK_INT);
-    private String phoneModel = Build.MANUFACTURER + " " + Build.MODEL;
-    private String deviceId;
+    private Date _date = new Date();
+    private static final String _osName = "Android";
+    private static final String _osVersion = Integer.toString(Build.VERSION.SDK_INT);
+    private static final String _phoneModel = Build.MANUFACTURER + " " + Build.MODEL;
+    private String _deviceId;
 
 
     public SignalReading(Context context) {
@@ -35,7 +33,7 @@ public class SignalReading {
         return this;
     }
     public SignalReading setDeviceId(String deviceId) {
-      this.deviceId = deviceId;
+      this._deviceId = deviceId;
       return this;
     }
 

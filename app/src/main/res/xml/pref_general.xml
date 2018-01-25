@@ -61,5 +61,6 @@
         android:capitalize="none"
         android:singleLine="true"
         android:maxLines="1"
-        android:visibility="gone"/>
+        android:visibility="visible"
+        android:enabled="false"/>
 </PreferenceScreen>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="databasename">Readings.sqlite3</string>
+    <string name="viewname_readings_not_added">readings_not_added</string>
+    <string name="tablename_readings">SignalReading</string>
+
+    <!--rowid is a special sqlite-auto-generated primary key column-->
+    <string name="columnname_rowid">rowid</string>
+
+    <string name="columnname_longitude">x</string>
+    <string name="columnname_latitude">y</string>
+    <string name="columnname_signalstrength">signal_strength</string>
+    <string name="columnname_date">date</string>
+    <string name="columnname_osname">os_name</string>
+    <string name="columnname_osversion">os_version</string>
+    <string name="columnname_phonemodel">phone_model</string>
+    <string name="columnname_deviceid">device_id</string>
+    <!--0 = hasn't been added to the feature class yet; 1 = has been added to the feature class-->
+    <string name="columnname_was_added_to_fc">is_posted</string>
+    <string name="table_readings_create_sql">
+        CREATE TABLE IF NOT EXISTS %1$s (
+            %2$s DOUBLE,
+            %3$s DOUBLE,
+            %4$s DOUBLE,
+            %5$s DATETIME,
+            %6$s TEXT,
+            %7$s TEXT,
+            %8$s TEXT,
+            %9$s TEXT,
+            %10$s INTEGER DEFAULT 0
+        )
+    </string>
+    <string name="table_readings_create_indexes_sql">
+        CREATE INDEX IF NOT EXISTS idx_signal_reading ON %1$s (
+            %2$s, %3$s, %4$s
+        )
+    </string>
+    <string name="view_readings_not_added_sql">
+        CREATE VIEW %1$s AS
+            SELECT * FROM %2$s
+            WHERE %3$s = 0
+    </string>
+</resources>

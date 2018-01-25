@@ -1,15 +1,14 @@
 <resources>
     <string name="app_name">Cell Strength Logger</string>
 
-    <string name="http_svc_url">http://services.arcgis.com/6DIQcwlPy8knb6sg/arcgis/rest/services/QSTracks_v3/FeatureServer/0/addFeatures</string>
+    <!--<string name="http_svc_url">http://services.arcgis.com/6DIQcwlPy8knb6sg/arcgis/rest/services/QSTracks_v3/FeatureServer/0/addFeatures</string>-->
 
     <string name="validation_interval">Please enter a value from %1$s to %2$s</string>
     <string name="notif_ticker">Logging Signal Strength</string>
     <string name="notif_title">Signal Strength Logging</string>
     <!--<string name="notif_content_text">Tap here to stop logging</string>-->
 
-<!--
-    <string name="http_add_feature_json">
+<!--    <string name="http_add_feature_json">
         [{
           \"geometry\" : {
             \"x\" : %1$s,

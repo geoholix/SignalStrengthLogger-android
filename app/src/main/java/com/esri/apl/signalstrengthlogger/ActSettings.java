@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.preference.EditTextPreference;
 import android.preference.ListPreference;
@@ -12,14 +13,16 @@ import android.preference.PreferenceActivity;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.preference.SwitchPreference;
-import android.provider.Settings;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Gravity;
 import android.widget.Toast;
+
+import com.esri.apl.signalstrengthlogger.data.LocalDBUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +50,8 @@ public class ActSettings extends PreferenceActivity {
   private final static String[] PERMISSIONS_NEEDED =
       new String[] {Manifest.permission.READ_PHONE_STATE, Manifest.permission.ACCESS_FINE_LOCATION};
 
+  private SQLiteDatabase mDB;
+
   /**
    * Determines whether to always show the simplified settings UI, where
    * settings are presented in a single list. When false, settings are shown
@@ -61,6 +66,19 @@ public class ActSettings extends PreferenceActivity {
     setupSimplePreferencesScreen();
 
     checkAndRequestPermissions(REQ_PERMISSIONS_ON_STARTUP);
+  }
+
+  @Override
+  protected void onCreate(@Nullable Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+
+    (new Thread(new Runnable() {
+      @Override
+      public void run() {
+        LocalDBUtils dbUtils = new LocalDBUtils(ActSettings.this);
+        mDB = dbUtils.getWritableDatabase();
+      }
+    })).start();
   }
 
   /**
@@ -106,12 +124,10 @@ public class ActSettings extends PreferenceActivity {
         prefId.getSharedPreferences().getString(prefId.getKey(), "")
     ))
     {
-      String sDeviceId = //InstanceID.getInstance(this).getId();
-          Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
-      if (TextUtils.isEmpty(sDeviceId)) sDeviceId = UUID.randomUUID().toString();
-
-      SharedPreferences.Editor edPrefId = prefId.getEditor();
-      edPrefId.putString(prefId.getKey(), sDeviceId).commit();
+//      String sDeviceId = null; // = InstanceID.getInstance(this).getId();
+//          Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+      String sDeviceId = UUID.randomUUID().toString();
+      prefId.getEditor().putString(prefId.getKey(), sDeviceId).commit();
     }
 
 /*        // Add 'notifications' preferences, and a corresponding header.

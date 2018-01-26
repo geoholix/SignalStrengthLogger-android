@@ -6,6 +6,7 @@ import android.app.Service;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.location.Location;
@@ -13,6 +14,7 @@ import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.v4.app.NotificationCompat;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
@@ -22,22 +24,36 @@ import android.telephony.CellSignalStrengthGsm;
 import android.telephony.CellSignalStrengthLte;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.util.Log;
 
-import com.esri.apl.signalstrengthlogger.data.LocalDBUtils;
+import com.esri.apl.signalstrengthlogger.data.DBHelper;
+import com.esri.apl.signalstrengthlogger.data.DBUtils;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.Task;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 /**
  * Logs signal strength readings at the prescribed displacement intervals.
@@ -133,7 +149,7 @@ public class SvcLocationLogger extends Service {
     startForeground(SVC_ID, nb.build());
 
     if (mDb == null || !mDb.isOpen()) {
-      SQLiteOpenHelper dbhlp = new LocalDBUtils(this);
+      SQLiteOpenHelper dbhlp = new DBHelper(this);
       mDb = dbhlp.getWritableDatabase();
     }
 
@@ -147,7 +163,15 @@ public class SvcLocationLogger extends Service {
         .setSmallestDisplacement(iDisp)
         .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
-    mFusedLocationClient.requestLocationUpdates(locReq, mLocationListener, Looper.myLooper());
+    Task<Void> tskReqLoc =  mFusedLocationClient.requestLocationUpdates(locReq, mLocationListener, Looper.myLooper());
+    tskReqLoc.addOnFailureListener(new OnFailureListener() {
+      @Override
+      public void onFailure(@NonNull Exception e) {
+        Log.e(TAG, "Error requesting updates", e);
+        // Stop logging and stop the service entirely
+        stopSelf();
+      }
+    });
 
     Log.d(TAG, "startLogging");
   }
@@ -161,37 +185,16 @@ public class SvcLocationLogger extends Service {
     // Stop listening to location updates
     mFusedLocationClient.removeLocationUpdates(mLocationListener);
 
+    mSharedPrefs.edit().putBoolean(getString(R.string.pref_key_logging_enabled), false)
+        .apply();
+
     // Stop the service since it's no longer needed
     stopForeground(true);
 
     Log.d(TAG, "stopLogging");
   }
 
-/*  protected synchronized GoogleApiClient buildGoogleApiClient() {
-    return new GoogleApiClient.Builder(this)
-        .addConnectionCallbacks(this)
-        .addOnConnectionFailedListener(this)
-        .addApi(LocationServices.API)
-        .build();
-  }*/
 
-/*  @Override
-  public void onConnected(Bundle bundle) {
-//        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mFusedLocationClient);
-    // Set up and start listening to location updates
-    String sIntDef = getString(R.string.pref_default_tracking_interval);
-    String sIntMin = getString(R.string.pref_min_tracking_interval);
-    int iIntMin = Integer.parseInt(sIntMin);
-    int iInt = Integer.parseInt(mSharedPrefs.getString(getString(R.string.pref_key_tracking_interval), sIntDef));
-    LocationRequest locReq = (new LocationRequest())
-        .setSmallestDisplacement(mReadingDisplacement)
-*//*        .setInterval(iInt * MS_PER_S)
-        .setFastestInterval(iIntMin * MS_PER_S)*//*
-        .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-
-    LocationServices.FusedLocationApi.requestLocationUpdates(
-        mFusedLocationClient, locReq, this);
-  }*/
 
   private LocationCallback mLocationListener = new LocationCallback() {
     @Override
@@ -204,15 +207,15 @@ public class SvcLocationLogger extends Service {
           Location loc = locationResult.getLastLocation();
           if (loc != null) { // Save to DB
             int signalStrength = getCellSignalStrength();
-            Date date = new Date();
 
             // Save reading to DB
             ContentValues vals = new ContentValues();
             vals.put(getString(R.string.columnname_longitude), loc.getLongitude());
             vals.put(getString(R.string.columnname_latitude), loc.getLatitude());
+            if (loc.hasAltitude())
+              vals.put(getString(R.string.columnname_altitude), loc.getAltitude());
             vals.put(getString(R.string.columnname_signalstrength), signalStrength);
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            vals.put(getString(R.string.columnname_date), sdf.format(date));
+            vals.put(getString(R.string.columnname_date), loc.getTime());
             vals.put(getString(R.string.columnname_osname), mOsName);
             vals.put(getString(R.string.columnname_osversion), mOsVersion);
             vals.put(getString(R.string.columnname_phonemodel), mPhoneModel);
@@ -317,5 +320,116 @@ public class SvcLocationLogger extends Service {
     }
 
     return result.toString();
+  }
+
+  /**
+   * Reads unposted records from local database and posts them as inserts to an online feature service
+   */
+  private void postReadingsToFC() {
+    new Thread(new Runnable() {
+      @Override
+      public void run() {
+        deletePreviouslyPostedRecords();
+
+        Cursor curUnposted = getUnpostedRecords();
+
+        // Post adds
+        List<Long> recIdsFailedToPost = postUnpostedRecords(curUnposted);
+
+        // Update Sqlite to mark the records as posted
+        updateNewlyPostedRecords(recIdsFailedToPost);
+
+        // Cleanup
+        SQLiteDatabase.releaseMemory();
+      }
+    }).start();
+  }
+  /** Meant to be called from a worker thread **/
+  private void deletePreviouslyPostedRecords() {
+    String where = getString(R.string.whereclause_posted_records,
+        getString(R.string.columnname_was_added_to_fc));
+    String table = getString(R.string.tablename_readings);
+    int iRes = mDb.delete(table, where, null);
+  }
+
+  /** Meant to be called from a worker thread **/
+  private Cursor getUnpostedRecords() {
+    String table = getString(R.string.viewname_unposted_records);
+/*    String where = getString(R.string.whereclause_unposted_records,
+        getString(R.string.columnname_was_added_to_fc));*/
+    return
+        mDb.query(table, null, null, null, null, null, null);
+  }
+
+  /** Meant to be called from a worker thread **/
+  private List<Long> postUnpostedRecords(Cursor curUnposted) {
+    // Get JSON for adds
+    List<String> jsonAdds = new ArrayList<>();
+    while (curUnposted.moveToNext()) {
+      String jsonAdd = DBUtils.jsonForOneFeature(this,
+          curUnposted.getFloat(0),
+          curUnposted.getFloat(1),
+          curUnposted.getFloat(2),
+          curUnposted.getFloat(3),
+          curUnposted.getLong(4),
+          curUnposted.getString(5),
+          curUnposted.getString(6),
+          curUnposted.getString(7),
+          curUnposted.getString(8)
+      );
+      jsonAdds.add(jsonAdd);
+    }
+    String sJsonAdds = "[" + TextUtils.join(",", jsonAdds.toArray(new String[]{}));
+    String sParams = "?f=json&features=" + sJsonAdds;
+
+    // Post via REST
+    String svcUrl = mSharedPrefs.getString(getString(R.string.pref_key_feat_svc_url), null);
+    List<Long> failures = new ArrayList<>();
+    try {
+      OkHttpClient http = new OkHttpClient();
+      MediaType mtJSON = MediaType.parse("application/json; charset=utf-8");
+      RequestBody reqBody = RequestBody.create(mtJSON, sParams);
+      Request req = new Request.Builder()
+          .url(svcUrl)
+          .post(reqBody)
+          .build();
+      Response resp = http.newCall(req).execute();
+
+      // Examine results and return list of rowids of failures
+      String jsonRes = resp.body().toString();
+      JSONObject res = new JSONObject(jsonRes);
+      JSONArray addResults = res.getJSONArray("addResults");
+
+      final int rowIdCol = curUnposted.getColumnIndex("rowid");
+
+      for (int iRes = 0; iRes < addResults.length(); iRes++) {
+        JSONObject addResult = addResults.getJSONObject(iRes);
+        if (!addResult.getString("success").equals("true")) {
+          curUnposted.move(iRes);
+          long iFailure = curUnposted.getLong(rowIdCol);
+          failures.add(iFailure);
+        }
+      }
+    } catch (IOException e) {
+      Log.e(TAG, "Error posting adds to feature service", e);
+    } catch (JSONException e) {
+      Log.e(TAG, "Error parsing add results", e);
+    }
+
+    return failures;
+  }
+
+  /** Meant to be called from a worker thread **/
+  private void updateNewlyPostedRecords(List<Long> failures) {
+    String table = getString(R.string.tablename_readings);
+    String postStatusColumn = getString(R.string.columnname_was_added_to_fc);
+    String where = postStatusColumn + " = 0 "
+        + "AND rowid NOT IN ("
+//        + StringUtils.join(failures.toArray(new String[]{}), ",")
+        + TextUtils.join(",", failures.toArray(new Long[]{}))
+        + ")";
+    ContentValues postStatus = new ContentValues();
+    postStatus.put(postStatusColumn, 1);
+    mDb.update(table, postStatus, where, null);
   }
 }

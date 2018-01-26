@@ -5,13 +5,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.preference.EditTextPreference;
 import android.support.v7.preference.ListPreference;
 import android.support.v7.preference.Preference;
 import android.support.v7.preference.PreferenceFragmentCompat;
@@ -21,18 +19,17 @@ import android.text.TextUtils;
 import android.view.Gravity;
 import android.widget.Toast;
 
-import com.esri.apl.signalstrengthlogger.data.LocalDBUtils;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class FrgPrefs extends PreferenceFragmentCompat {
+public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
   // onPermissionsResult needs to know when the permissions request was made
   private final static int REQ_PERMISSIONS_ON_STARTUP = 1;
   private final static int REQ_PERMISSIONS_ON_STARTLOGGING = 2;
 
   private Context mCtx;
+  private SharedPreferences mSharedPrefs;
 
   private final static String[] PERMISSIONS_NEEDED =
       new String[] {Manifest.permission.READ_PHONE_STATE, Manifest.permission.ACCESS_FINE_LOCATION};
@@ -47,17 +44,13 @@ public class FrgPrefs extends PreferenceFragmentCompat {
   public void onCreate(@Nullable Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
 
-
-    (new Thread(new Runnable() {
-      @Override
-      public void run() {
-        LocalDBUtils dbUtils = new LocalDBUtils(mCtx);
-        SQLiteDatabase db = dbUtils.getWritableDatabase();
-        db.close();
-      }
-    })).start();
-
     checkAndRequestPermissions(REQ_PERMISSIONS_ON_STARTUP);
+  }
+
+  @Override
+  public void onDestroyView() {
+    super.onDestroyView();
+    mSharedPrefs.unregisterOnSharedPreferenceChangeListener(this);
   }
 
   @Override
@@ -98,22 +91,16 @@ public class FrgPrefs extends PreferenceFragmentCompat {
     // use the older PreferenceActivity APIs.
 
     // Compute a first-time default for device id
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mCtx);
-    String deviceId = prefs.getString(getString(R.string.pref_key_device_id), "");
+    mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(mCtx);
+
+    // Listen for changes to prefs, to update the logger switch if needed
+    mSharedPrefs.registerOnSharedPreferenceChangeListener(this);
+
+    String deviceId = mSharedPrefs.getString(getString(R.string.pref_key_device_id), "");
     if (TextUtils.isEmpty(deviceId)) {
       deviceId = UUID.randomUUID().toString();
-      prefs.edit().putString(getString(R.string.pref_key_device_id), deviceId).commit();
+      mSharedPrefs.edit().putString(getString(R.string.pref_key_device_id), deviceId).commit();
     }
-/*    Preference prefId = findPreference(getString(R.string.pref_key_device_id));
-    if (TextUtils.isEmpty(
-        prefId.getSharedPreferences().getString(prefId.getKey(), "")
-    ))
-    {
-//      String sDeviceId = null; // = InstanceID.getInstance(this).getId();
-//          Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
-      String sDeviceId = UUID.randomUUID().toString();
-      prefId.getEditor().putString(prefId.getKey(), sDeviceId).commit();
-    }*/
 
     // Add 'general' preferences.
     addPreferencesFromResource(R.xml.prefs_ui);
@@ -152,50 +139,8 @@ public class FrgPrefs extends PreferenceFragmentCompat {
     bindPreferenceSummaryToValue(findPreference(
         getString(R.string.pref_key_device_id)));
 
-/*        bindPreferenceSummaryToValue(findPreference("notifications_new_message_ringtone"));
-        bindPreferenceSummaryToValue(findPreference("sync_frequency"));*/
   }
 
-  /**
-   * {@inheritDoc}
-   */
-/*    @Override
-    public boolean onIsMultiPane() {
-        return isXLargeTablet(this) && !isSimplePreferences(this);
-    }*/
-
-  /**
-   * Helper method to determine if the device has an extra-large screen. For
-   * example, 10" tablets are extra-large.
-   */
- /*   private static boolean isXLargeTablet(Context context) {
-        return (context.getResources().getConfiguration().screenLayout
-                & Configuration.SCREENLAYOUT_SIZE_MASK) >= Configuration.SCREENLAYOUT_SIZE_XLARGE;
-    }*/
-
-  /**
-   * Determines whether the simplified settings UI should be shown. This is
-   * true if this is forced via {@link #ALWAYS_SIMPLE_PREFS}, or the device
-   * doesn't have newer APIs like {@link PreferenceFragment}, or the device
-   * doesn't have an extra-large screen. In these cases, a single-pane
-   * "simplified" settings UI should be shown.
-   */
-/*    private static boolean isSimplePreferences(Context context) {
-        return ALWAYS_SIMPLE_PREFS
-                || Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB
-                || !isXLargeTablet(context);
-    }*/
-
-  /**
-   * {@inheritDoc}
-   */
-/*    @Override
-    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
-    public void onBuildHeaders(List<Header> target) {
-        if (!isSimplePreferences(this)) {
-            loadHeadersFromResource(R.xml.pref_headers, target);
-        }
-    }*/
 
   /**
    * A preference value change listener that updates the preference's summary
@@ -231,8 +176,7 @@ public class FrgPrefs extends PreferenceFragmentCompat {
             boolean isTrackingEnabled = (boolean) value;
             if (!isTrackingEnabled) stopLogging();
             else { // Trying to start logging
-              // Check that permissions have been granted
-              EditTextPreference prefUserId = (EditTextPreference)getPreferenceScreen()
+/*              EditTextPreference prefUserId = (EditTextPreference)getPreferenceScreen()
                   .findPreference(getString(R.string.pref_key_user_id));
               if (prefUserId.getText().isEmpty()) {
                 Toast toast = Toast.makeText(mCtx,
@@ -240,11 +184,11 @@ public class FrgPrefs extends PreferenceFragmentCompat {
                 toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
                 toast.show();
                 return false;
-              }
+              }*/
+              // Check that permissions have been granted
               if (checkAndRequestPermissions(REQ_PERMISSIONS_ON_STARTLOGGING))
                 startLogging();
-              else
-                return false;
+              else return false;
             }
           } else if (preference.getKey().equals(getString(R.string.pref_key_tracking_interval))) {
             // Validate tracking interval
@@ -259,8 +203,12 @@ public class FrgPrefs extends PreferenceFragmentCompat {
             if (TextUtils.isEmpty(stringValue) || !TextUtils.isDigitsOnly(stringValue)) {
               bIsValidInterval = false;
             } else {
-              iInterval = Integer.parseInt(stringValue);
-              if (iInterval < iMinInterval || iInterval > iMaxInterval) {
+              try {
+                iInterval = Integer.parseInt(stringValue);
+                if (iInterval < iMinInterval || iInterval > iMaxInterval) {
+                  bIsValidInterval = false;
+                }
+              } catch (Exception e) {
                 bIsValidInterval = false;
               }
             }
@@ -286,8 +234,12 @@ public class FrgPrefs extends PreferenceFragmentCompat {
             if (TextUtils.isEmpty(stringValue) || !TextUtils.isDigitsOnly(stringValue)) {
               bIsValidDisp = false;
             } else {
-              iDisp = Integer.parseInt(stringValue);
-              if (iDisp < iMinDisp || iDisp > iMaxDisp) {
+              try {
+                iDisp = Integer.parseInt(stringValue);
+                if (iDisp < iMinDisp || iDisp > iMaxDisp) {
+                  bIsValidDisp = false;
+                }
+              } catch (Exception e) {
                 bIsValidDisp = false;
               }
             }
@@ -368,6 +320,17 @@ public class FrgPrefs extends PreferenceFragmentCompat {
       dlg.show();
     } else if (requestCode == REQ_PERMISSIONS_ON_STARTLOGGING) {
       startLogging();
+    }
+  }
+
+  @Override
+  public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
+    if (s.equals(getString(R.string.pref_key_logging_enabled))) {
+      // Update the switch because the pref was set programmatically
+      SwitchPreferenceCompat pref = (SwitchPreferenceCompat)findPreference(s);
+      if (pref == null) return;
+
+      pref.setChecked(sharedPreferences.getBoolean(s, false));
     }
   }
 }

@@ -8,7 +8,7 @@
 
     <string name="pref_key_feat_svc_url">feat_svc_url</string>
     <string name="pref_title_feat_svc_url">Feature Service URL</string>
-    <string name="pref_default_feat_svc_url">https://services.arcgis.com/6DIQcwlPy8knb6sg/arcgis/rest/services/cellsignal/FeatureServer</string>
+    <string name="pref_default_feat_svc_url">https://services.arcgis.com/6DIQcwlPy8knb6sg/arcgis/rest/services/cellsignal/FeatureServer/0</string>
 
     <string name="pref_key_user_id">user_id</string>
     <string name="pref_title_user_id">User ID</string>

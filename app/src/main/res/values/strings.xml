@@ -1,37 +1,33 @@
 <resources>
     <string name="app_name">Cell Strength Logger</string>
 
-    <!--<string name="http_svc_url">http://services.arcgis.com/6DIQcwlPy8knb6sg/arcgis/rest/services/QSTracks_v3/FeatureServer/0/addFeatures</string>-->
-
     <string name="notif_ticker">Logging Signal Strength</string>
     <string name="notif_title">Signal Strength Logging</string>
     <string name="notif_chan_id">com.esri.apl.signalstrengthlogger</string>
     <string name="notif_chan_name">Signal Strength Logger</string>
     <!--<string name="notif_content_text">Tap here to stop logging</string>-->
 
-<!--    <string name="http_add_feature_json">
-        [{
+    <string name="add_one_feature_json">
+        {
           \"geometry\" : {
             \"x\" : %1$s,
             \"y\" : %2$s,
+            \"z\" : %3$s,
             \"spatialReference\" : {\"wkid\" : 4326}
           },
           \"attributes\" : {
-            \"userID\" : %3$s,
-            \"timestamp\" : %4$s,
-            \"gender\" : %5$s,
-            \"mood\" : %6$s,
-            \"age\" : %7$s,
-            \"gpsaccuracy\" : %8$s,
-            \"remainingbatteryPercentage\" : %9$s,
-            \"osversion\" : \"Android %10$s\",
-            \"phonemodel\" : \"%11$s\",
-            \"heading\" : %12$s,
-            \"speed\" : %13$s,
-            \"altitude\" : %14$s
+            \"signal\" : %4$s,
+            \"datetime\" : %5$s,
+            \"osname\" : %6$s,
+            \"osversion\" : %7$s,
+            \"phonemodel\" : %8$s,
+            \"deviceid\" : %9$s
           }
-        }]
-    </string>-->
+        }
+    </string>
     <string name="exc_bad_QSFeat_params">Invalid Location and UserID when logging a QS location</string>
     <string name="log_create_success">Posted feature got response code %1$d with parameters:\\n%2$s</string>
+    <string name="msg_err_location_request">
+        Unable to get the device\'s location; check to make sure Google Play Services are installed and up-to-date.
+    </string>
 </resources>

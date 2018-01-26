@@ -39,10 +39,9 @@
         android:selectAllOnFocus="true"
         android:inputType="textPassword"
         android:password="true"
-        android:imeOptions=""
         android:capitalize="none"
         android:singleLine="true"
-        android:maxLines="0" />
+        android:maxLines="1" />
 
     <EditTextPreference
         android:key="@string/pref_key_tracking_interval"
@@ -53,6 +52,13 @@
         android:inputType="number"
         android:maxLength="4"
         android:numeric="integer"/>
+<!--    <SeekBarPreference
+        android:key="@string/pref_key_tracking_interval"
+        android:dependency="@string/pref_key_logging_enabled"
+        android:title="@string/pref_title_tracking_interval"
+        android:max="@string/pref_max_tracking_interval"
+        android:defaultValue="@string/pref_default_tracking_interval"
+        />-->
     <EditTextPreference
         android:key="@string/pref_key_tracking_displacement"
         android:dependency="@string/pref_key_logging_enabled"
@@ -62,6 +68,12 @@
         android:inputType="number"
         android:maxLength="3"
         android:numeric="integer"/>
+<!--    <SeekBarPreference
+        android:key="@string/pref_key_tracking_displacement"
+        android:dependency="@string/pref_key_logging_enabled"
+        android:title="@string/pref_title_tracking_displacement"
+        android:max="@string/pref_max_tracking_displacement"
+        android:defaultValue="@string/pref_default_tracking_displacement"/>-->
     <Preference
         android:key="@string/pref_key_device_id"
         android:dependency="@string/pref_key_logging_enabled"

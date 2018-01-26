@@ -6,11 +6,11 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 import com.esri.apl.signalstrengthlogger.R;
 
-public class LocalDBUtils extends SQLiteOpenHelper {
+public class DBHelper extends SQLiteOpenHelper {
   private static final int DATABASE_VERSION = 3;
   private Context mContext;
 
-  public LocalDBUtils(Context context) {
+  public DBHelper(Context context) {
     super(context, context.getString(R.string.databasename), null, DATABASE_VERSION);
 
     this.mContext = context;
@@ -22,6 +22,7 @@ public class LocalDBUtils extends SQLiteOpenHelper {
         mContext.getString(R.string.tablename_readings),
         mContext.getString(R.string.columnname_longitude),
         mContext.getString(R.string.columnname_latitude),
+        mContext.getString(R.string.columnname_altitude),
         mContext.getString(R.string.columnname_signalstrength),
         mContext.getString(R.string.columnname_date),
         mContext.getString(R.string.columnname_osname),
@@ -39,15 +40,13 @@ public class LocalDBUtils extends SQLiteOpenHelper {
         mContext.getString(R.string.columnname_was_added_to_fc));
     db.execSQL(sCreateIndexSql);
 
-    String sCreateViewSql = mContext.getString(R.string.view_readings_not_added_sql,
-        mContext.getString(R.string.viewname_readings_not_added),
+    String sCreateViewSql = mContext.getString(R.string.view_unposted_records_sql,
+        mContext.getString(R.string.viewname_unposted_records),
         mContext.getString(R.string.tablename_readings),
         mContext.getString(R.string.columnname_was_added_to_fc));
     db.execSQL(sCreateViewSql);
   }
 
   @Override
-  public void onUpgrade(SQLiteDatabase db, int i, int i1) {
-
-  }
+  public void onUpgrade(SQLiteDatabase db, int i, int i1) {}
 }

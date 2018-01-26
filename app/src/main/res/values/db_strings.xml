@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="databasename">Readings.sqlite3</string>
-    <string name="viewname_readings_not_added">readings_not_added</string>
+    <string name="viewname_unposted_records">readings_not_added</string>
     <string name="tablename_readings">SignalReading</string>
 
     <!--rowid is a special sqlite-auto-generated primary key column-->
@@ -9,6 +9,7 @@
 
     <string name="columnname_longitude">x</string>
     <string name="columnname_latitude">y</string>
+    <string name="columnname_altitude">z</string>
     <string name="columnname_signalstrength">signal_strength</string>
     <string name="columnname_date">date</string>
     <string name="columnname_osname">os_name</string>
@@ -22,12 +23,13 @@
             %2$s DOUBLE,
             %3$s DOUBLE,
             %4$s DOUBLE,
-            %5$s DATETIME,
-            %6$s TEXT,
+            %5$s DOUBLE,
+            %6$s INTEGER,
             %7$s TEXT,
             %8$s TEXT,
             %9$s TEXT,
-            %10$s INTEGER DEFAULT 0
+            %10$s TEXT,
+            %11$s INTEGER DEFAULT 0
         )
     </string>
     <string name="table_readings_create_indexes_sql">
@@ -35,9 +37,11 @@
             %2$s, %3$s, %4$s
         )
     </string>
-    <string name="view_readings_not_added_sql">
+    <string name="view_unposted_records_sql">
         CREATE VIEW %1$s AS
             SELECT * FROM %2$s
             WHERE %3$s = 0
     </string>
+    <string name="whereclause_unposted_records">%1$s = 0 </string>
+    <string name="whereclause_posted_records">%1$s = 1</string>
 </resources>

@@ -1,24 +1,23 @@
 package com.esri.apl.signalstrengthlogger;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
-import android.preference.EditTextPreference;
-import android.preference.ListPreference;
-import android.preference.Preference;
-import android.preference.PreferenceActivity;
-import android.preference.PreferenceFragment;
-import android.preference.PreferenceManager;
-import android.preference.SwitchPreference;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
+import android.support.v7.preference.EditTextPreference;
+import android.support.v7.preference.ListPreference;
+import android.support.v7.preference.Preference;
+import android.support.v7.preference.PreferenceFragmentCompat;
+import android.support.v7.preference.PreferenceManager;
+import android.support.v7.preference.SwitchPreferenceCompat;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.Gravity;
 import android.widget.Toast;
 
@@ -28,57 +27,42 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * A {@link PreferenceActivity} that presents a set of application settings. On
- * handset devices, settings are presented as a single list. On tablets,
- * settings are split by category, with category headers shown to the left of
- * the list of settings.
- * <p/>
- * See <a href="http://developer.android.com/design/patterns/settings.html">
- * Android Design: Settings</a> for design guidelines and the <a
- * href="http://developer.android.com/guide/topics/ui/settings.html">Settings
- * API Guide</a> for more information on developing a Settings UI.
- */
-// TODO Use a standard activity and preferences fragment
-public class ActSettings extends PreferenceActivity {
-  public final static String TAG = "ActSettings";
-
+public class FrgPrefs extends PreferenceFragmentCompat {
   // onPermissionsResult needs to know when the permissions request was made
   private final static int REQ_PERMISSIONS_ON_STARTUP = 1;
   private final static int REQ_PERMISSIONS_ON_STARTLOGGING = 2;
 
+  private Context mCtx;
+
   private final static String[] PERMISSIONS_NEEDED =
       new String[] {Manifest.permission.READ_PHONE_STATE, Manifest.permission.ACCESS_FINE_LOCATION};
 
-  private SQLiteDatabase mDB;
-
-  /**
-   * Determines whether to always show the simplified settings UI, where
-   * settings are presented in a single list. When false, settings are shown
-   * as a master/detail two-pane view on tablets. When true, a single pane is
-   * shown on tablets.
-   */
-//    private static final boolean ALWAYS_SIMPLE_PREFS = false;
   @Override
-  protected void onPostCreate(Bundle savedInstanceState) {
-    super.onPostCreate(savedInstanceState);
+  public void onAttach(Context context) {
+    super.onAttach(context);
+    this.mCtx = context;
+  }
 
-    setupSimplePreferencesScreen();
+  @Override
+  public void onCreate(@Nullable Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+
+
+    (new Thread(new Runnable() {
+      @Override
+      public void run() {
+        LocalDBUtils dbUtils = new LocalDBUtils(mCtx);
+        SQLiteDatabase db = dbUtils.getWritableDatabase();
+        db.close();
+      }
+    })).start();
 
     checkAndRequestPermissions(REQ_PERMISSIONS_ON_STARTUP);
   }
 
   @Override
-  protected void onCreate(@Nullable Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-
-    (new Thread(new Runnable() {
-      @Override
-      public void run() {
-        LocalDBUtils dbUtils = new LocalDBUtils(ActSettings.this);
-        mDB = dbUtils.getWritableDatabase();
-      }
-    })).start();
+  public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+    setupSimplePreferencesScreen();
   }
 
   /**
@@ -89,14 +73,13 @@ public class ActSettings extends PreferenceActivity {
   private boolean checkAndRequestPermissions(int req_code) {
     List<String> permsNeeded = new ArrayList<>();
     for (int iPerm = 0; iPerm < PERMISSIONS_NEEDED.length; iPerm++) {
-      if (ActivityCompat.checkSelfPermission(
-          this, PERMISSIONS_NEEDED[iPerm]) != PackageManager.PERMISSION_GRANTED)
+      if (ContextCompat.checkSelfPermission(
+          mCtx, PERMISSIONS_NEEDED[iPerm]) != PackageManager.PERMISSION_GRANTED)
         permsNeeded.add(PERMISSIONS_NEEDED[iPerm]);
     }
     int iPermsNeeded = permsNeeded.size();
     if (iPermsNeeded > 0)
-      ActivityCompat.requestPermissions(
-          this, permsNeeded.toArray(new String[iPermsNeeded]), req_code);
+      requestPermissions(permsNeeded.toArray(new String[iPermsNeeded]), req_code);
 
     return (iPermsNeeded == 0);
   }
@@ -114,12 +97,14 @@ public class ActSettings extends PreferenceActivity {
     // In the simplified UI, fragments are not used at all and we instead
     // use the older PreferenceActivity APIs.
 
-    // Add 'general' preferences.
-    addPreferencesFromResource(R.xml.pref_general);
-
     // Compute a first-time default for device id
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-    Preference prefId = findPreference(getString(R.string.pref_key_device_id));
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mCtx);
+    String deviceId = prefs.getString(getString(R.string.pref_key_device_id), "");
+    if (TextUtils.isEmpty(deviceId)) {
+      deviceId = UUID.randomUUID().toString();
+      prefs.edit().putString(getString(R.string.pref_key_device_id), deviceId).commit();
+    }
+/*    Preference prefId = findPreference(getString(R.string.pref_key_device_id));
     if (TextUtils.isEmpty(
         prefId.getSharedPreferences().getString(prefId.getKey(), "")
     ))
@@ -128,7 +113,10 @@ public class ActSettings extends PreferenceActivity {
 //          Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
       String sDeviceId = UUID.randomUUID().toString();
       prefId.getEditor().putString(prefId.getKey(), sDeviceId).commit();
-    }
+    }*/
+
+    // Add 'general' preferences.
+    addPreferencesFromResource(R.xml.prefs_ui);
 
 /*        // Add 'notifications' preferences, and a corresponding header.
         PreferenceCategory fakeHeader = new PreferenceCategory(this);
@@ -151,11 +139,18 @@ public class ActSettings extends PreferenceActivity {
     bindPreferenceSummaryToValue(findPreference(
         getString(R.string.pref_key_logging_enabled)));
     bindPreferenceSummaryToValue(findPreference(
+        getString(R.string.pref_key_feat_svc_url)));
+    bindPreferenceSummaryToValue(findPreference(
         getString(R.string.pref_key_user_id)));
     bindPreferenceSummaryToValue(findPreference(
         getString(R.string.pref_key_user_pw)));
     bindPreferenceSummaryToValue(findPreference(
-        getString(R.string.pref_key_tracking_interval)));
+        getString(R.string.pref_key_tracking_displacement)));
+    bindPreferenceSummaryToValue(findPreference(
+        getString(R.string.pref_key_tracking_interval)
+    ));
+    bindPreferenceSummaryToValue(findPreference(
+        getString(R.string.pref_key_device_id)));
 
 /*        bindPreferenceSummaryToValue(findPreference("notifications_new_message_ringtone"));
         bindPreferenceSummaryToValue(findPreference("sync_frequency"));*/
@@ -224,8 +219,7 @@ public class ActSettings extends PreferenceActivity {
                 index >= 0
                     ? listPreference.getEntries()[index]
                     : null);
-          } else if (preference.getKey().equals(getString(R.string.pref_key_user_pw))
-              && value != null) {
+          } else if (preference.getKey().equals(getString(R.string.pref_key_user_pw)) && value != null) {
             // Replace password with asterisks
             int pwLen = value.toString().length();
             String sPwMask = new String(new char[pwLen]).replace("\0", "*");
@@ -241,7 +235,7 @@ public class ActSettings extends PreferenceActivity {
               EditTextPreference prefUserId = (EditTextPreference)getPreferenceScreen()
                   .findPreference(getString(R.string.pref_key_user_id));
               if (prefUserId.getText().isEmpty()) {
-                Toast toast = Toast.makeText(ActSettings.this,
+                Toast toast = Toast.makeText(mCtx,
                     "Please set a User ID to allow logging", Toast.LENGTH_LONG);
                 toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
                 toast.show();
@@ -256,41 +250,56 @@ public class ActSettings extends PreferenceActivity {
             // Validate tracking interval
             String sMinInterval = getString(R.string.pref_min_tracking_interval);
             String sMaxInterval = getString(R.string.pref_max_tracking_interval);
-            int iMinInterval, iMaxInterval;
-            try {
-              iMinInterval = Integer.parseInt(sMinInterval);
-              iMaxInterval = Integer.parseInt(sMaxInterval);
-            } catch (Exception e) {
-              Log.e(TAG, "Error decoding stored min/max intervals)", e);
-              Toast.makeText(ActSettings.this, "Error retrieving min/max intervals:\n"
-                      + e.getLocalizedMessage(),
-                  Toast.LENGTH_LONG)
-                  .show();
-              return false;
-            }
+            int iMinInterval = Integer.parseInt(sMinInterval);
+            int iMaxInterval = Integer.parseInt(sMaxInterval);
 
-            boolean bIsValid = true;
+            int iInterval;
+            boolean bIsValidInterval = true;
 
             if (TextUtils.isEmpty(stringValue) || !TextUtils.isDigitsOnly(stringValue)) {
-              bIsValid = false;
+              bIsValidInterval = false;
             } else {
-              int iInterval = Integer.parseInt(stringValue);
+              iInterval = Integer.parseInt(stringValue);
               if (iInterval < iMinInterval || iInterval > iMaxInterval) {
-                bIsValid = false;
+                bIsValidInterval = false;
               }
             }
-            if (!bIsValid) {
+            if (!bIsValidInterval) {
               Toast toast = Toast.makeText(
-                  ActSettings.this,
-                  getString(R.string.validation_interval, sMinInterval, sMaxInterval),
+                  mCtx,
+                  getString(R.string.validation_interval_displacement, iMinInterval, iMaxInterval),
                   Toast.LENGTH_LONG);
               toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
               toast.show();
               return false;
-            } else {
-              preference.setSummary(stringValue);
-            }
+            } else preference.setSummary(stringValue);
+          } else if (preference.getKey().equals(getString(R.string.pref_key_tracking_displacement))) {
+            // Validate tracking displacement
+            String sMinDisp = getString(R.string.pref_min_tracking_displacement);
+            String sMaxDisp = getString(R.string.pref_max_tracking_displacement);
+            int iMinDisp = Integer.parseInt(sMinDisp);
+            int iMaxDisp = Integer.parseInt(sMaxDisp);
 
+            int iDisp;
+            boolean bIsValidDisp = true;
+
+            if (TextUtils.isEmpty(stringValue) || !TextUtils.isDigitsOnly(stringValue)) {
+              bIsValidDisp = false;
+            } else {
+              iDisp = Integer.parseInt(stringValue);
+              if (iDisp < iMinDisp || iDisp > iMaxDisp) {
+                bIsValidDisp = false;
+              }
+            }
+            if (!bIsValidDisp) {
+              Toast toast = Toast.makeText(
+                  mCtx,
+                  getString(R.string.validation_interval_displacement, iMinDisp, iMaxDisp),
+                  Toast.LENGTH_LONG);
+              toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
+              toast.show();
+              return false;
+            } else preference.setSummary(stringValue);
           } else {
             // For all other preferences, set the summary to the value's
             // simple string representation.
@@ -325,19 +334,19 @@ public class ActSettings extends PreferenceActivity {
 
 
   private void startLogging() {
-    SwitchPreference prefLogging = (SwitchPreference) getPreferenceScreen()
+    SwitchPreferenceCompat prefLogging = (SwitchPreferenceCompat) getPreferenceScreen()
         .findPreference(getString(R.string.pref_key_logging_enabled));
     prefLogging.setChecked(true);
 
     Intent intent = new Intent();
-    intent.setClass(this, SvcLocationLogger.class);
-    startService(intent);
+    intent.setClass(mCtx, SvcLocationLogger.class);
+    getActivity().startService(intent);
   }
 
   private void stopLogging() {
-    Intent intent = new Intent();
-    intent.setClass(this, SvcLocationLogger.class);
-    stopService(intent);
+    Intent intent = new Intent(mCtx, SvcLocationLogger.class);
+//    intent.setClass(this, SvcLocationLogger.class);
+    getActivity().stopService(intent);
   }
 
   @Override
@@ -351,7 +360,7 @@ public class ActSettings extends PreferenceActivity {
 
     if (!allPermsGranted) {
       // Present rationale
-      AlertDialog dlg = new AlertDialog.Builder(this)
+      AlertDialog dlg = new AlertDialog.Builder(mCtx)
           .setMessage("Location and phone signal strength permissions must be granted to allow logging to begin.")
           .setTitle("Permission Needed")
           .setPositiveButton(android.R.string.ok, null)

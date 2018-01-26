@@ -3,9 +3,10 @@
 
     <!--<string name="http_svc_url">http://services.arcgis.com/6DIQcwlPy8knb6sg/arcgis/rest/services/QSTracks_v3/FeatureServer/0/addFeatures</string>-->
 
-    <string name="validation_interval">Please enter a value from %1$s to %2$s</string>
     <string name="notif_ticker">Logging Signal Strength</string>
     <string name="notif_title">Signal Strength Logging</string>
+    <string name="notif_chan_id">com.esri.apl.signalstrengthlogger</string>
+    <string name="notif_chan_name">Signal Strength Logger</string>
     <!--<string name="notif_content_text">Tap here to stop logging</string>-->
 
 <!--    <string name="http_add_feature_json">
@@ -33,6 +34,4 @@
     </string>-->
     <string name="exc_bad_QSFeat_params">Invalid Location and UserID when logging a QS location</string>
     <string name="log_create_success">Posted feature got response code %1$d with parameters:\\n%2$s</string>
-
-
 </resources>

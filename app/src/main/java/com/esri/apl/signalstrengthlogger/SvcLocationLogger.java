@@ -11,6 +11,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.location.Location;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.Looper;
 import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.telephony.CellInfo;
@@ -37,7 +38,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Logs signal strength readings at the prescribed displacement intervals.
@@ -49,11 +49,9 @@ public class SvcLocationLogger extends Service {
   private static final int SVC_ID = 1;
   private static final int ACT_PI_REQ_CODE = 1;
   private static final String TAG = "SvcLocationLogger";
-//  private static final int MS_PER_S = 1000;
+  private static final int MS_PER_S = 1000;
 
   private URL mUrlPostFeature = null;
-
-  private AtomicBoolean mIsCurrentlyLogging = new AtomicBoolean(false);
 
 //  private SignalReading mSignalReading = null;
   private TelephonyManager mTelMgr;
@@ -61,17 +59,23 @@ public class SvcLocationLogger extends Service {
   private SharedPreferences mSharedPrefs = null;
   private SQLiteDatabase mDb;
 
-  // From shared preferences
-  private float mReadingDisplacement;
+  // Various fields needing one-time calculation
   private String mDeviceId;
+  private String mOsName = "Android";
+  private String mOsVersion = Integer.toString(Build.VERSION.SDK_INT);
+  private String mPhoneModel = Build.MANUFACTURER + " " + Build.MODEL;
 
   @Override
-  public IBinder onBind(Intent intent) { return null; }
+  public IBinder onBind(Intent intent) {
+    Log.d(TAG, "onBind");
+    return null;
+  }
 
   @Override
   public void onDestroy() {
     stopLogging();
     super.onDestroy();
+    Log.d(TAG, "onDestroy");
   }
 
   @Override
@@ -85,18 +89,20 @@ public class SvcLocationLogger extends Service {
       Log.e(TAG, "Exception creating feature-creation URL.", e);
     }
 
-    mReadingDisplacement = mSharedPrefs.getFloat(getString(R.string.pref_key_tracking_interval), 1f);
     mDeviceId = mSharedPrefs.getString(getString(R.string.pref_key_device_id), null);
 
     // This creates the API client, but doesn't call connect.
     mFusedLocationClient = new FusedLocationProviderClient(this);
 
     mTelMgr = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
+
+    Log.d(TAG, "onCreate");
   }
 
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
     startLogging();
+    Log.d(TAG, "onStartCommand");
     return super.onStartCommand(intent, flags, startId);
   }
 
@@ -104,50 +110,46 @@ public class SvcLocationLogger extends Service {
   /**
    * Performs various tasks to start logging, including:
    * <ul>
-   *     <li>Getting user-entered values to be logged along with location</li>
    *     <li>Making the service foreground</li>
    *     <li>Creating a persistent notification</li>
    *     <li>Connecting to the API client and listening to location updates</li>
    * </ul>
    */
   private void startLogging() {
-    if (!mIsCurrentlyLogging.get()) {
-      // Get preferences info
-/*      mSignalReading = (new SignalReading(this))
-          .setDeviceId(PreferenceManager.getDefaultSharedPreferences(this)
-              .getString(getString(R.string.pref_key_device_id), null));*/
+    // Create notification and bring to foreground
+    Intent intent = new Intent(this, ActMain.class);
+    PendingIntent contentIntent =
+        PendingIntent.getActivity(this, ACT_PI_REQ_CODE, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT);
 
-      // Create notification and bring to foreground
-      Intent intent = new Intent(this, ActSettings.class);
-      PendingIntent contentIntent =
-          PendingIntent.getActivity(this, ACT_PI_REQ_CODE, intent,
-              PendingIntent.FLAG_UPDATE_CURRENT);
-
-      // TODO Create notification channel (and delete it too)
-      NotificationCompat.Builder nb = new NotificationCompat.Builder(this)
+    NotificationCompat.Builder nb = new NotificationCompat.Builder(this)
 //                .setSmallIcon(android.R.drawable.ic_menu_compass)
-          .setSmallIcon(R.drawable.ic_cellsignal)
-          .setTicker(getString(R.string.notif_ticker))
-          .setContentTitle(getString(R.string.notif_title))
+        .setSmallIcon(R.drawable.ic_cellsignal)
+        .setTicker(getString(R.string.notif_ticker))
+        .setContentTitle(getString(R.string.notif_title))
 //                .setContentText(getString(R.string.notif_content_text))
-          .setContentIntent(contentIntent);
+        .setContentIntent(contentIntent);
 
-      startForeground(SVC_ID, nb.build());
+    startForeground(SVC_ID, nb.build());
 
-      // Set up location listening
-      LocationRequest locReq = (new LocationRequest())
-          .setSmallestDisplacement(mReadingDisplacement)
-/*        .setInterval(iInt * MS_PER_S)
-        .setFastestInterval(iIntMin * MS_PER_S)*/
-          .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-      mFusedLocationClient.requestLocationUpdates(locReq, mLocationListener, null);
-
-      mIsCurrentlyLogging.set(true);
-    }
     if (mDb == null || !mDb.isOpen()) {
       SQLiteOpenHelper dbhlp = new LocalDBUtils(this);
       mDb = dbhlp.getWritableDatabase();
     }
+
+    // Start listening to location updates
+    String sDisp = mSharedPrefs.getString(getString(R.string.pref_key_tracking_displacement), "1");
+    int iDisp = Integer.parseInt(sDisp);
+    String sInterval = mSharedPrefs.getString(getString(R.string.pref_key_tracking_interval), "5");
+    int iInterval = Integer.parseInt(sInterval);
+    LocationRequest locReq = (new LocationRequest())
+        .setInterval(iInterval * MS_PER_S)
+        .setSmallestDisplacement(iDisp)
+        .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+
+    mFusedLocationClient.requestLocationUpdates(locReq, mLocationListener, Looper.myLooper());
+
+    Log.d(TAG, "startLogging");
   }
 
   private void stopLogging() {
@@ -156,16 +158,13 @@ public class SvcLocationLogger extends Service {
       mDb = null;
     }
 
-    if (mIsCurrentlyLogging.get()) {
-      // Stop listening to location updates
+    // Stop listening to location updates
+    mFusedLocationClient.removeLocationUpdates(mLocationListener);
 
-      mFusedLocationClient.removeLocationUpdates(mLocationListener);
+    // Stop the service since it's no longer needed
+    stopForeground(true);
 
-      // Stop the service since it's no longer needed
-      stopForeground(true);
-
-      mIsCurrentlyLogging.set(false);
-    }
+    Log.d(TAG, "stopLogging");
   }
 
 /*  protected synchronized GoogleApiClient buildGoogleApiClient() {
@@ -196,29 +195,33 @@ public class SvcLocationLogger extends Service {
 
   private LocationCallback mLocationListener = new LocationCallback() {
     @Override
-    public void onLocationResult(LocationResult locationResult) {
-      Location loc = locationResult.getLastLocation();
-      if (loc != null) { // Save to DB
-        // TODO save reading to DB
-        int signalStrength = getCellSignalStrength();
-        Date date = new Date();
-        String osName = "Android";
-        String osVersion = Integer.toString(Build.VERSION.SDK_INT);
-        String phoneModel = Build.MANUFACTURER + " " + Build.MODEL;
+    public void onLocationResult(final LocationResult locationResult) {
+      Log.d(TAG, "onLocationResults");
 
-        ContentValues vals = new ContentValues();
-        vals.put(getString(R.string.columnname_longitude), loc.getLongitude());
-        vals.put(getString(R.string.columnname_latitude), loc.getLatitude());
-        vals.put(getString(R.string.columnname_signalstrength), signalStrength);
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        vals.put(getString(R.string.columnname_date), sdf.format(date));
-        vals.put(getString(R.string.columnname_osname), osName);
-        vals.put(getString(R.string.columnname_osversion), osVersion);
-        vals.put(getString(R.string.columnname_phonemodel), phoneModel);
-        vals.put(getString(R.string.columnname_deviceid), mDeviceId);
+      new Thread(new Runnable() {
+        @Override
+        public void run() {
+          Location loc = locationResult.getLastLocation();
+          if (loc != null) { // Save to DB
+            int signalStrength = getCellSignalStrength();
+            Date date = new Date();
 
-        mDb.insert(getString(R.string.tablename_readings), null, vals);
-      }
+            // Save reading to DB
+            ContentValues vals = new ContentValues();
+            vals.put(getString(R.string.columnname_longitude), loc.getLongitude());
+            vals.put(getString(R.string.columnname_latitude), loc.getLatitude());
+            vals.put(getString(R.string.columnname_signalstrength), signalStrength);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            vals.put(getString(R.string.columnname_date), sdf.format(date));
+            vals.put(getString(R.string.columnname_osname), mOsName);
+            vals.put(getString(R.string.columnname_osversion), mOsVersion);
+            vals.put(getString(R.string.columnname_phonemodel), mPhoneModel);
+            vals.put(getString(R.string.columnname_deviceid), mDeviceId);
+
+            mDb.insert(getString(R.string.tablename_readings), null, vals);
+          }
+        }
+      }).start();
     }
   };
 
@@ -271,7 +274,7 @@ public class SvcLocationLogger extends Service {
    */
   // TODO Detect and handle transition to/from airplane mode
   private int getCellSignalStrength() {
-    int strength = 0;
+    int strength = Integer.MIN_VALUE;
     List<CellInfo> cellInfos = mTelMgr.getAllCellInfo();   //This will give info of all sims present inside your mobile
     if(cellInfos!=null) {
       for (int i = 0; i < cellInfos.size(); i++) {

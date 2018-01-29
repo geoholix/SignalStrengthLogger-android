@@ -79,7 +79,12 @@ public class DBUtils {
         db.query(table, null, null, null, null, null, null);
   }
 
-  /** Meant to be called from a worker thread **/
+  /** Meant to be called from a worker thread
+   * @param cur SQLite DB cursor to list of unposted records
+   * @param ctx Service context
+   * @param sharedPrefs Shared preferences
+   * @return list of rowids of records that were successfully posted
+   * **/
   public static List<Long> postUnpostedRecords(
       Cursor cur, Context ctx, SharedPreferences sharedPrefs)
       throws IOException, JSONException {
@@ -104,13 +109,13 @@ public class DBUtils {
 
     // Post via REST
     String svcUrl = sharedPrefs.getString(ctx.getString(R.string.pref_key_feat_svc_url), null);
-    List<Long> failures = new ArrayList<>();
+    List<Long> successes = new ArrayList<>();
     OkHttpClient http = new OkHttpClient();
     MediaType mtJSON = MediaType.parse("application/json; charset=utf-8");
 
     RequestBody reqBody = new FormBody.Builder()
         .add("f", "json")
-        .add("rollbackOnFailure", "true")
+        .add("rollbackOnFailure", "false")
         .add("features", sJsonAdds)
         .build();
     Request req = new Request.Builder()
@@ -119,33 +124,41 @@ public class DBUtils {
         .build();
     Response resp = http.newCall(req).execute();
 
-    // Examine results and return list of rowids of failures
+    // Examine results and return list of rowids of successes
     String jsonRes = resp.body().string();
     JSONObject res = new JSONObject(jsonRes);
+
+    // If error, exit
+    if (res.has("error")) {
+      throw new IOException("Error adding features: " + res.getJSONObject("error")
+        .getJSONArray("details").join("; "));
+    }
+
+    // Otherwise, parse the results
     JSONArray addResults = res.getJSONArray("addResults");
 
     final int rowIdCol = cur.getColumnIndex("rowid");
 
     for (int iRes = 0; iRes < addResults.length(); iRes++) {
       JSONObject addResult = addResults.getJSONObject(iRes);
-      if (!addResult.getString("success").equals("true")) {
+      if (addResult.getString("success").equals("true")) {
         cur.move(iRes);
-        long iFailure = cur.getLong(rowIdCol);
-        failures.add(iFailure);
+        long iSuccess = cur.getLong(rowIdCol);
+        successes.add(iSuccess);
       }
     }
 
-    return failures;
+    return successes;
   }
 
-  /** Meant to be called from a worker thread **/
-  public static void updateNewlySentRecordsAsPosted(SQLiteDatabase db, Context ctx, List<Long> failures) {
+  /** Meant to be called from a worker thread.<p/>
+   * Assumption: successes is a valid list (even if empty) **/
+  public static void updateNewlySentRecordsAsPosted(SQLiteDatabase db, Context ctx, List<Long> successes) {
     String table = ctx.getString(R.string.tablename_readings);
     String postStatusColumn = ctx.getString(R.string.columnname_was_added_to_fc);
     String where = postStatusColumn + " = 0 "
-        + "AND rowid NOT IN ("
-//        + StringUtils.join(failures.toArray(new String[]{}), ",")
-        + TextUtils.join(",", failures.toArray(new Long[]{}))
+        + "AND rowid IN ("
+        + TextUtils.join(",", successes.toArray(new Long[]{}))
         + ")";
     ContentValues postStatus = new ContentValues();
     postStatus.put(postStatusColumn, 1);

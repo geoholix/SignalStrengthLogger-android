@@ -18,9 +18,9 @@
           \"attributes\" : {
             \"signal\" : %4$s,
             \"datetime\" : %5$s,
-            \"osname\" : \"%6$s,\"
-            \"osversion\" : \"%7$s,\"
-            \"phonemodel\" : \"%8$s,\"
+            \"osname\" : \"%6$s\",
+            \"osversion\" : \"%7$s\",
+            \"phonemodel\" : \"%8$s\",
             \"deviceid\" : \"%9$s\"
           }
         }

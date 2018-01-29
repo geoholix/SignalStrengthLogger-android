@@ -325,9 +325,9 @@ public class SvcLocationLogger extends Service {
           Cursor curUnposted = DBUtils.getUnpostedRecords(mDb, ctx);
 
           // Post adds
-          List<Long> recIdsFailedToPost;
+          List<Long> recIdsSuccessfullyPosted;
           try {
-            recIdsFailedToPost = DBUtils.postUnpostedRecords(curUnposted, ctx, mSharedPrefs);
+            recIdsSuccessfullyPosted = DBUtils.postUnpostedRecords(curUnposted, ctx, mSharedPrefs);
           } catch (IOException e) {
             throw new IOException("Error posting adds to feature service", e);
           } catch (JSONException e) {
@@ -336,7 +336,7 @@ public class SvcLocationLogger extends Service {
 
 
           // Update Sqlite to mark the records as posted
-          DBUtils.updateNewlySentRecordsAsPosted(mDb, ctx, recIdsFailedToPost);
+          DBUtils.updateNewlySentRecordsAsPosted(mDb, ctx, recIdsSuccessfullyPosted);
         } catch (Exception e) {
           Log.e(TAG, e.getLocalizedMessage());
         }

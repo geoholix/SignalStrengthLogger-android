@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -24,7 +25,6 @@ import android.telephony.CellSignalStrengthGsm;
 import android.telephony.CellSignalStrengthLte;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.TelephonyManager;
-import android.text.TextUtils;
 import android.util.Log;
 
 import com.esri.apl.signalstrengthlogger.data.DBHelper;
@@ -36,24 +36,11 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
 
-import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URL;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 
 /**
  * Logs signal strength readings at the prescribed displacement intervals.
@@ -177,15 +164,15 @@ public class SvcLocationLogger extends Service {
   }
 
   private void stopLogging() {
-    if (mDb != null && mDb.isOpen()) {
-      mDb.close();
-      mDb = null;
-    }
+    // Sync updates to feature class
+    // TODO check connectivity first
+    postRecordsToFC();
 
     // Stop listening to location updates
     mFusedLocationClient.removeLocationUpdates(mLocationListener);
 
-    mSharedPrefs.edit().putBoolean(getString(R.string.pref_key_logging_enabled), false)
+    mSharedPrefs.edit()
+        .putBoolean(getString(R.string.pref_key_logging_enabled), false)
         .apply();
 
     // Stop the service since it's no longer needed
@@ -303,7 +290,7 @@ public class SvcLocationLogger extends Service {
     return strength;
   }
 
-  private String getPostDataString(HashMap<String, String> params) throws UnsupportedEncodingException{
+/*  private String getPostDataString(HashMap<String, String> params) throws UnsupportedEncodingException{
     StringBuilder result = new StringBuilder();
     boolean first = true;
     for(Map.Entry<String, String> entry : params.entrySet()){
@@ -320,116 +307,49 @@ public class SvcLocationLogger extends Service {
     }
 
     return result.toString();
-  }
+  }*/
 
   /**
-   * Reads unposted records from local database and posts them as inserts to an online feature service
+   * Reads unposted records from local database and posts them as inserts to an online feature service.
+   * This will also close the database.
    */
-  private void postReadingsToFC() {
+  private void postRecordsToFC() {
     new Thread(new Runnable() {
       @Override
       public void run() {
-        deletePreviouslyPostedRecords();
+        Context ctx = SvcLocationLogger.this;
 
-        Cursor curUnposted = getUnpostedRecords();
+        try {
+          DBUtils.deletePreviouslyPostedRecords(mDb, ctx);
 
-        // Post adds
-        List<Long> recIdsFailedToPost = postUnpostedRecords(curUnposted);
+          Cursor curUnposted = DBUtils.getUnpostedRecords(mDb, ctx);
 
-        // Update Sqlite to mark the records as posted
-        updateNewlyPostedRecords(recIdsFailedToPost);
+          // Post adds
+          List<Long> recIdsFailedToPost;
+          try {
+            recIdsFailedToPost = DBUtils.postUnpostedRecords(curUnposted, ctx, mSharedPrefs);
+          } catch (IOException e) {
+            throw new IOException("Error posting adds to feature service", e);
+          } catch (JSONException e) {
+            throw new Exception("Error parsing add results", e);
+          }
+
+
+          // Update Sqlite to mark the records as posted
+          DBUtils.updateNewlySentRecordsAsPosted(mDb, ctx, recIdsFailedToPost);
+        } catch (Exception e) {
+          Log.e(TAG, e.getLocalizedMessage());
+        }
+
+        if (mDb != null && mDb.isOpen()) {
+          mDb.close();
+          mDb = null;
+        }
 
         // Cleanup
         SQLiteDatabase.releaseMemory();
       }
     }).start();
   }
-  /** Meant to be called from a worker thread **/
-  private void deletePreviouslyPostedRecords() {
-    String where = getString(R.string.whereclause_posted_records,
-        getString(R.string.columnname_was_added_to_fc));
-    String table = getString(R.string.tablename_readings);
-    int iRes = mDb.delete(table, where, null);
-  }
 
-  /** Meant to be called from a worker thread **/
-  private Cursor getUnpostedRecords() {
-    String table = getString(R.string.viewname_unposted_records);
-/*    String where = getString(R.string.whereclause_unposted_records,
-        getString(R.string.columnname_was_added_to_fc));*/
-    return
-        mDb.query(table, null, null, null, null, null, null);
-  }
-
-  /** Meant to be called from a worker thread **/
-  private List<Long> postUnpostedRecords(Cursor curUnposted) {
-    // Get JSON for adds
-    List<String> jsonAdds = new ArrayList<>();
-    while (curUnposted.moveToNext()) {
-      String jsonAdd = DBUtils.jsonForOneFeature(this,
-          curUnposted.getFloat(0),
-          curUnposted.getFloat(1),
-          curUnposted.getFloat(2),
-          curUnposted.getFloat(3),
-          curUnposted.getLong(4),
-          curUnposted.getString(5),
-          curUnposted.getString(6),
-          curUnposted.getString(7),
-          curUnposted.getString(8)
-      );
-      jsonAdds.add(jsonAdd);
-    }
-    String sJsonAdds = "[" + TextUtils.join(",", jsonAdds.toArray(new String[]{}));
-    String sParams = "?f=json&features=" + sJsonAdds;
-
-    // Post via REST
-    String svcUrl = mSharedPrefs.getString(getString(R.string.pref_key_feat_svc_url), null);
-    List<Long> failures = new ArrayList<>();
-    try {
-      OkHttpClient http = new OkHttpClient();
-      MediaType mtJSON = MediaType.parse("application/json; charset=utf-8");
-      RequestBody reqBody = RequestBody.create(mtJSON, sParams);
-      Request req = new Request.Builder()
-          .url(svcUrl)
-          .post(reqBody)
-          .build();
-      Response resp = http.newCall(req).execute();
-
-      // Examine results and return list of rowids of failures
-      String jsonRes = resp.body().toString();
-      JSONObject res = new JSONObject(jsonRes);
-      JSONArray addResults = res.getJSONArray("addResults");
-
-      final int rowIdCol = curUnposted.getColumnIndex("rowid");
-
-      for (int iRes = 0; iRes < addResults.length(); iRes++) {
-        JSONObject addResult = addResults.getJSONObject(iRes);
-        if (!addResult.getString("success").equals("true")) {
-          curUnposted.move(iRes);
-          long iFailure = curUnposted.getLong(rowIdCol);
-          failures.add(iFailure);
-        }
-      }
-    } catch (IOException e) {
-      Log.e(TAG, "Error posting adds to feature service", e);
-    } catch (JSONException e) {
-      Log.e(TAG, "Error parsing add results", e);
-    }
-
-    return failures;
-  }
-
-  /** Meant to be called from a worker thread **/
-  private void updateNewlyPostedRecords(List<Long> failures) {
-    String table = getString(R.string.tablename_readings);
-    String postStatusColumn = getString(R.string.columnname_was_added_to_fc);
-    String where = postStatusColumn + " = 0 "
-        + "AND rowid NOT IN ("
-//        + StringUtils.join(failures.toArray(new String[]{}), ",")
-        + TextUtils.join(",", failures.toArray(new Long[]{}))
-        + ")";
-    ContentValues postStatus = new ContentValues();
-    postStatus.put(postStatusColumn, 1);
-    mDb.update(table, postStatus, where, null);
-  }
 }

@@ -1,9 +1,28 @@
 package com.esri.apl.signalstrengthlogger.data;
 
+import android.content.ContentValues;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.text.TextUtils;
 
 import com.esri.apl.signalstrengthlogger.R;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import okhttp3.FormBody;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class DBUtils {
   private static String formatParamForJSON(int param) {
@@ -41,5 +60,95 @@ public class DBUtils {
         formatParamForJSON(phoneModel),
         formatParamForJSON(deviceId));
     return json;
+  }
+
+  /** Meant to be called from a worker thread **/
+  public static void deletePreviouslyPostedRecords(SQLiteDatabase db, Context ctx) {
+    String where = ctx.getString(R.string.whereclause_posted_records,
+        ctx.getString(R.string.columnname_was_added_to_fc));
+    String table = ctx.getString(R.string.tablename_readings);
+    int iRes = db.delete(table, where, null);
+  }
+
+  /** Meant to be called from a worker thread **/
+  public static Cursor getUnpostedRecords(SQLiteDatabase db, Context ctx) {
+    String table = ctx.getString(R.string.viewname_unposted_records);
+/*    String where = getString(R.string.whereclause_unposted_records,
+        getString(R.string.columnname_was_added_to_fc));*/
+    return
+        db.query(table, null, null, null, null, null, null);
+  }
+
+  /** Meant to be called from a worker thread **/
+  public static List<Long> postUnpostedRecords(
+      Cursor cur, Context ctx, SharedPreferences sharedPrefs)
+      throws IOException, JSONException {
+    // Get JSON for adds
+    List<String> jsonAdds = new ArrayList<>();
+    while (cur.moveToNext()) {
+      String jsonAdd = DBUtils.jsonForOneFeature(ctx,
+          cur.getFloat(cur.getColumnIndex(ctx.getString(R.string.columnname_longitude))),
+          cur.getFloat(cur.getColumnIndex(ctx.getString(R.string.columnname_latitude))),
+          cur.getFloat(cur.getColumnIndex(ctx.getString(R.string.columnname_altitude))),
+          cur.getFloat(cur.getColumnIndex(ctx.getString(R.string.columnname_signalstrength))),
+          cur.getLong(cur.getColumnIndex(ctx.getString(R.string.columnname_date))),
+          cur.getString(cur.getColumnIndex(ctx.getString(R.string.columnname_osname))),
+          cur.getString(cur.getColumnIndex(ctx.getString(R.string.columnname_osversion))),
+          cur.getString(cur.getColumnIndex(ctx.getString(R.string.columnname_phonemodel))),
+          cur.getString(cur.getColumnIndex(ctx.getString(R.string.columnname_deviceid)))
+      );
+      jsonAdds.add(jsonAdd);
+    }
+    String sJsonAdds = "[" + TextUtils.join(",", jsonAdds.toArray(new String[]{})) + "]";
+//    String sParams = "?f=json&features=" + sJsonAdds;
+
+    // Post via REST
+    String svcUrl = sharedPrefs.getString(ctx.getString(R.string.pref_key_feat_svc_url), null);
+    List<Long> failures = new ArrayList<>();
+    OkHttpClient http = new OkHttpClient();
+    MediaType mtJSON = MediaType.parse("application/json; charset=utf-8");
+
+    RequestBody reqBody = new FormBody.Builder()
+        .add("f", "json")
+        .add("rollbackOnFailure", "true")
+        .add("features", sJsonAdds)
+        .build();
+    Request req = new Request.Builder()
+        .url(svcUrl)
+        .post(reqBody)
+        .build();
+    Response resp = http.newCall(req).execute();
+
+    // Examine results and return list of rowids of failures
+    String jsonRes = resp.body().string();
+    JSONObject res = new JSONObject(jsonRes);
+    JSONArray addResults = res.getJSONArray("addResults");
+
+    final int rowIdCol = cur.getColumnIndex("rowid");
+
+    for (int iRes = 0; iRes < addResults.length(); iRes++) {
+      JSONObject addResult = addResults.getJSONObject(iRes);
+      if (!addResult.getString("success").equals("true")) {
+        cur.move(iRes);
+        long iFailure = cur.getLong(rowIdCol);
+        failures.add(iFailure);
+      }
+    }
+
+    return failures;
+  }
+
+  /** Meant to be called from a worker thread **/
+  public static void updateNewlySentRecordsAsPosted(SQLiteDatabase db, Context ctx, List<Long> failures) {
+    String table = ctx.getString(R.string.tablename_readings);
+    String postStatusColumn = ctx.getString(R.string.columnname_was_added_to_fc);
+    String where = postStatusColumn + " = 0 "
+        + "AND rowid NOT IN ("
+//        + StringUtils.join(failures.toArray(new String[]{}), ",")
+        + TextUtils.join(",", failures.toArray(new Long[]{}))
+        + ")";
+    ContentValues postStatus = new ContentValues();
+    postStatus.put(postStatusColumn, 1);
+    db.update(table, postStatus, where, null);
   }
 }

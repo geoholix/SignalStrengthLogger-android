@@ -139,13 +139,14 @@ public class DBUtils {
 
     final int rowIdCol = cur.getColumnIndex("rowid");
 
+    cur.moveToFirst();
     for (int iRes = 0; iRes < addResults.length(); iRes++) {
       JSONObject addResult = addResults.getJSONObject(iRes);
       if (addResult.getString("success").equals("true")) {
-        cur.move(iRes);
         long iSuccess = cur.getLong(rowIdCol);
         successes.add(iSuccess);
       }
+      cur.moveToNext();
     }
 
     return successes;

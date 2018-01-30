@@ -215,47 +215,7 @@ public class SvcLocationLogger extends Service {
     }
   };
 
-  private void saveReadingToFeatureService() {
-    // Save info to feature service
-/*    mSignalReading.setLocation(location);
-    (new Thread(new Runnable() {
-      @Override
-      public synchronized void run() {
-        HashMap<String, String> params = new HashMap<String, String>();
-        params.put("f", "json");
-        params.put("features", mSignalReading.getFeatureJSON());
-        try {
-          HttpURLConnection conn = (HttpURLConnection) mUrlPostFeature.openConnection();
 
-          conn.setReadTimeout(10000);
-          conn.setConnectTimeout(15000);
-          conn.setRequestMethod("POST");
-          conn.setDoInput(true);
-          conn.setDoOutput(true);
-
-          OutputStream os = conn.getOutputStream();
-          BufferedWriter writer = new BufferedWriter(
-              new OutputStreamWriter(os, "UTF-8"));
-          String sPostData = getPostDataString(params);
-          writer.write(sPostData);
-          writer.flush();
-          writer.close();
-          os.close();
-
-          conn.connect();
-
-          int iResp = conn.getResponseCode();
-          Log.d(TAG, getString(R.string.log_create_success, iResp, sPostData));
-
-          conn.disconnect();
-        } catch (Exception e) {
-          Log.e(TAG, "Problem creating new location log", e);
-          // Need to create a notification here
-        }
-
-      }
-    })).start();*/
-  }
 
   /** Signal strength value
    *  Note: Suppress missing permission error, as this check was done in the main activity

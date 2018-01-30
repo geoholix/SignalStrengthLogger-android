@@ -28,7 +28,13 @@
     <string name="pref_min_tracking_interval">0</string>
     <string name="pref_max_tracking_interval">3600</string>
     <string name="pref_default_tracking_interval">5</string>
-    <string name="validation_interval_displacement">Please enter a value from %1$d to %2$d</string>
+    <string name="msg_validation_interval_displacement_sync">Please enter a value from %1$d to %2$d</string>
+
+    <string name="pref_key_sync_interval">sync_interval</string>
+    <string name="pref_title_sync_interval">Sync to Feature Service how often (minutes)?</string>
+    <string name="pref_min_sync_interval">1</string>
+    <string name="pref_max_sync_interval">600</string>
+    <string name="pref_default_sync_interval">15</string>
 
     <!--    <string name="pref_header_general">General</string> -->
 

@@ -134,8 +134,9 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
     bindPreferenceSummaryToValue(findPreference(
         getString(R.string.pref_key_tracking_displacement)));
     bindPreferenceSummaryToValue(findPreference(
-        getString(R.string.pref_key_tracking_interval)
-    ));
+            getString(R.string.pref_key_tracking_interval)));
+    bindPreferenceSummaryToValue(findPreference(
+            getString(R.string.pref_key_sync_interval)));
     bindPreferenceSummaryToValue(findPreference(
         getString(R.string.pref_key_device_id)));
 
@@ -191,73 +192,67 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
               else return false;
             }
           } else if (preference.getKey().equals(getString(R.string.pref_key_tracking_interval))) {
-            // Validate tracking interval
-            String sMinInterval = getString(R.string.pref_min_tracking_interval);
-            String sMaxInterval = getString(R.string.pref_max_tracking_interval);
-            int iMinInterval = Integer.parseInt(sMinInterval);
-            int iMaxInterval = Integer.parseInt(sMaxInterval);
-
-            int iInterval;
-            boolean bIsValidInterval = true;
-
-            if (TextUtils.isEmpty(stringValue) || !TextUtils.isDigitsOnly(stringValue)) {
-              bIsValidInterval = false;
-            } else {
-              try {
-                iInterval = Integer.parseInt(stringValue);
-                if (iInterval < iMinInterval || iInterval > iMaxInterval) {
-                  bIsValidInterval = false;
-                }
-              } catch (Exception e) {
-                bIsValidInterval = false;
-              }
-            }
-            if (!bIsValidInterval) {
-              Toast toast = Toast.makeText(
-                  mCtx,
-                  getString(R.string.validation_interval_displacement, iMinInterval, iMaxInterval),
-                  Toast.LENGTH_LONG);
-              toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
-              toast.show();
-              return false;
-            } else preference.setSummary(stringValue);
+            return validateInterval(
+                    preference,
+                    stringValue,
+                    getString(R.string.pref_min_tracking_interval),
+                    getString(R.string.pref_max_tracking_interval),
+                    R.string.msg_validation_interval_displacement_sync);
           } else if (preference.getKey().equals(getString(R.string.pref_key_tracking_displacement))) {
-            // Validate tracking displacement
-            String sMinDisp = getString(R.string.pref_min_tracking_displacement);
-            String sMaxDisp = getString(R.string.pref_max_tracking_displacement);
-            int iMinDisp = Integer.parseInt(sMinDisp);
-            int iMaxDisp = Integer.parseInt(sMaxDisp);
-
-            int iDisp;
-            boolean bIsValidDisp = true;
-
-            if (TextUtils.isEmpty(stringValue) || !TextUtils.isDigitsOnly(stringValue)) {
-              bIsValidDisp = false;
-            } else {
-              try {
-                iDisp = Integer.parseInt(stringValue);
-                if (iDisp < iMinDisp || iDisp > iMaxDisp) {
-                  bIsValidDisp = false;
-                }
-              } catch (Exception e) {
-                bIsValidDisp = false;
-              }
-            }
-            if (!bIsValidDisp) {
-              Toast toast = Toast.makeText(
-                  mCtx,
-                  getString(R.string.validation_interval_displacement, iMinDisp, iMaxDisp),
-                  Toast.LENGTH_LONG);
-              toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
-              toast.show();
-              return false;
-            } else preference.setSummary(stringValue);
+            return validateInterval(
+                    preference,
+                    stringValue,
+                    getString(R.string.pref_min_tracking_displacement),
+                    getString(R.string.pref_max_tracking_displacement),
+                    R.string.msg_validation_interval_displacement_sync);
+          } else if (preference.getKey().equals(getString(R.string.pref_key_sync_interval))) {
+            return validateInterval(
+                    preference,
+                    stringValue,
+                    getString(R.string.pref_min_sync_interval),
+                    getString(R.string.pref_max_sync_interval),
+                    R.string.msg_validation_interval_displacement_sync);
           } else {
             // For all other preferences, set the summary to the value's
             // simple string representation.
             preference.setSummary(stringValue);
           }
           return true;
+        }
+        private boolean validateInterval(Preference preference,
+                                         String val, String min, String max,
+                                         int msgValidationKey) {
+          // Validate tracking interval
+          int iMinInterval = Integer.parseInt(min);
+          int iMaxInterval = Integer.parseInt(max);
+
+          int iInterval;
+          boolean bIsValidInterval = true;
+
+          // Domain validation
+          if (TextUtils.isEmpty(val) || !TextUtils.isDigitsOnly(val)) {
+            bIsValidInterval = false;
+          } else { // Defined-limit validation
+            try {
+              iInterval = Integer.parseInt(val);
+              if (iInterval < iMinInterval || iInterval > iMaxInterval) {
+                bIsValidInterval = false;
+              }
+            } catch (Exception e) {
+              bIsValidInterval = false;
+            }
+          }
+          if (!bIsValidInterval) {
+            Toast toast = Toast.makeText(
+                    mCtx,
+                    getString(msgValidationKey, iMinInterval, iMaxInterval),
+                    Toast.LENGTH_LONG);
+            toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
+            toast.show();
+          } else
+            preference.setSummary(val);
+
+          return bIsValidInterval;
         }
       };
 

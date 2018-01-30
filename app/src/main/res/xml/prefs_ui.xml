@@ -74,6 +74,15 @@
         android:title="@string/pref_title_tracking_displacement"
         android:max="@string/pref_max_tracking_displacement"
         android:defaultValue="@string/pref_default_tracking_displacement"/>-->
+    <EditTextPreference
+        android:key="@string/pref_key_sync_interval"
+        android:dependency="@string/pref_key_logging_enabled"
+        android:title="@string/pref_title_sync_interval"
+        android:selectAllOnFocus="true"
+        android:defaultValue="@string/pref_default_sync_interval"
+        android:inputType="number"
+        android:maxLength="3"
+        android:numeric="integer"/>
     <Preference
         android:key="@string/pref_key_device_id"
         android:dependency="@string/pref_key_logging_enabled"

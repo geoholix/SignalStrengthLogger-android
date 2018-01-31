@@ -175,6 +175,10 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
               && value != null && value instanceof Boolean) {
             // Start/stop the tracking service
             boolean isTrackingEnabled = (boolean) value;
+            preference.setTitle(isTrackingEnabled
+                                ? R.string.pref_title_logging_enabled
+                                : R.string.pref_title_logging_disabled);
+
             if (!isTrackingEnabled) stopLogging();
             else { // Trying to start logging
 /*              EditTextPreference prefUserId = (EditTextPreference)getPreferenceScreen()

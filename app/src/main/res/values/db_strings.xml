@@ -16,6 +16,7 @@
     <string name="columnname_osversion">os_version</string>
     <string name="columnname_phonemodel">phone_model</string>
     <string name="columnname_deviceid">device_id</string>
+    <string name="columnname_carrierid">carrier_id</string>
     <!--0 = hasn't been added to the feature class yet; 1 = has been added to the feature class-->
     <string name="columnname_was_added_to_fc">is_posted</string>
     <string name="table_readings_create_sql">
@@ -29,7 +30,8 @@
             %8$s TEXT,
             %9$s TEXT,
             %10$s TEXT,
-            %11$s INTEGER DEFAULT 0
+            %11$s TEXT,
+            %12$s INTEGER DEFAULT 0
         )
     </string>
     <string name="table_readings_create_indexes_sql">
@@ -39,9 +41,11 @@
     </string>
     <string name="view_unposted_records_sql">
         CREATE VIEW %1$s AS
-            SELECT * FROM %2$s
+            SELECT *, rowid FROM %2$s
             WHERE %3$s = 0
     </string>
-    <string name="whereclause_unposted_records">%1$s = 0 </string>
+    <string name="whereclause_unposted_records">%1$s = 0</string>
+<!--    <string name="fieldlist_unposted_records">
+        x,y,z,signal_strength,date,os_name,os_version,phone_model,device_id,is_posted,rowid</string>-->
     <string name="whereclause_posted_records">%1$s = 1</string>
 </resources>

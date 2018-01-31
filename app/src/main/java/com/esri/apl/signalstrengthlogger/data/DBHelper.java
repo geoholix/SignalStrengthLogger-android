@@ -29,6 +29,7 @@ public class DBHelper extends SQLiteOpenHelper {
         mContext.getString(R.string.columnname_osversion),
         mContext.getString(R.string.columnname_phonemodel),
         mContext.getString(R.string.columnname_deviceid),
+        mContext.getString(R.string.columnname_carrierid),
         mContext.getString(R.string.columnname_was_added_to_fc)
     );
     db.execSQL(sCreateTableSql);

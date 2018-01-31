@@ -4,11 +4,13 @@
 
     <!-- General settings -->
     <string name="pref_key_logging_enabled">tracking_enabled</string>
-    <string name="pref_title_logging_enabled">Record Signal Strength Readings</string>
+    <string name="pref_title_logging_enabled">Logging is on</string>
+    <string name="pref_title_logging_disabled">Logging is off</string>
 
     <string name="pref_key_feat_svc_url">feat_svc_url</string>
     <string name="pref_title_feat_svc_url">Feature Service URL</string>
-    <string name="pref_default_feat_svc_url">https://services.arcgis.com/6DIQcwlPy8knb6sg/arcgis/rest/services/cellsignal/FeatureServer/0/addFeatures</string>
+    <!--<string name="pref_default_feat_svc_url">https://services.arcgis.com/6DIQcwlPy8knb6sg/arcgis/rest/services/cellsignal/FeatureServer/0/addFeatures</string>-->
+    <string name="pref_default_feat_svc_url">https://services.arcgis.com/W6FrZiZ4flx7mLJe/arcgis/rest/services/SignalReadings/FeatureServer/0/addFeatures</string>
 
     <string name="pref_key_user_id">user_id</string>
     <string name="pref_title_user_id">User ID</string>
@@ -34,7 +36,7 @@
     <string name="pref_title_sync_interval">Sync to Feature Service how often (minutes)?</string>
     <string name="pref_min_sync_interval">1</string>
     <string name="pref_max_sync_interval">600</string>
-    <string name="pref_default_sync_interval">15</string>
+    <string name="pref_default_sync_interval">10</string>
 
     <!--    <string name="pref_header_general">General</string> -->
 

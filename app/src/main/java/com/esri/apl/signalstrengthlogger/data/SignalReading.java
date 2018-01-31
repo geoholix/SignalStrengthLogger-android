@@ -5,9 +5,6 @@ import android.location.Location;
 import android.os.Build;
 import android.text.TextUtils;
 
-import com.esri.apl.signalstrengthlogger.R;
-
-import java.security.InvalidParameterException;
 import java.util.Date;
 
 public class SignalReading {
@@ -63,11 +60,11 @@ public class SignalReading {
         if (param == Double.NaN) return "null";
         else return String.format("%f", param);
     }
-    public String getFeatureJSON() {
+/*    public String getFeatureJSON() {
         if (this.location == null)
             throw new InvalidParameterException(context.getString(R.string.exc_bad_QSFeat_params));
 
-/*        String sJSON = context.getString(R.string.http_add_feature_json,
+        String sJSON = context.getString(R.string.http_add_feature_json,
                 formatParamForJSON(this.location.getLongitude()),
                 formatParamForJSON(this.location.getLatitude()),
                 TextUtils.isEmpty(this.userId)
@@ -83,9 +80,9 @@ public class SignalReading {
                 location.hasBearing() ? formatParamForJSON(location.getBearing()) : "null",
                 location.hasSpeed() ? formatParamForJSON(location.getSpeed()) : "null",
                 location.hasAltitude() ? formatParamForJSON(location.getAltitude()) : "null"
-        );*/
+        );
 
         String sJSON = null;
         return sJSON;
-    }
+    }*/
 }

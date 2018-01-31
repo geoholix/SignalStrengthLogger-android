@@ -3,8 +3,8 @@
     <SwitchPreferenceCompat
         android:key="@string/pref_key_logging_enabled"
         android:disableDependentsState="true"
-        android:title="@string/pref_title_logging_enabled"
         android:defaultValue="false"/>
+    <!--android:title="@string/pref_title_logging_disabled"-->
 
     <!-- NOTE: EditTextPreference accepts EditText attributes. -->
     <!-- NOTE: EditTextPreference's summary should be set to its value by the activity code. -->

@@ -21,13 +21,22 @@
             \"osname\" : \"%6$s\",
             \"osversion\" : \"%7$s\",
             \"phonemodel\" : \"%8$s\",
-            \"deviceid\" : \"%9$s\"
+            \"deviceid\" : \"%9$s\",
+            \"carrierid\" : \"%10$s\"
           }
         }
     </string>
-    <string name="exc_bad_QSFeat_params">Invalid Location and UserID when logging a QS location</string>
+    <!--<string name="exc_bad_QSFeat_params">Invalid Location and UserID when logging a QS location</string>-->
     <string name="log_create_success">Posted feature got response code %1$d with parameters:\\n%2$s</string>
     <string name="msg_err_location_request">
         Unable to get the device\'s location; check to make sure Google Play Services are installed and up-to-date.
     </string>
+    <string name="title_err_synchronization">Problem during synchronization</string>
+    <string name="msg_err_synchronization">
+        Couldn\'t sync to the feature service.\n
+        Make sure you\'re connected to the internet and that your feature service URL is correct.
+        \n\"%1$s"\"
+    </string>
+    <string name="group_err_synchronization">signal_strength_logger_sync_errors</string>
+    <string name="notif_unsynced_records">%1$d records still unsynced</string>
 </resources>

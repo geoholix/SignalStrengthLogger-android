@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.esri.apl.signalstrengthlogger.R;
 
@@ -18,13 +19,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import okhttp3.FormBody;
-import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class DBUtils {
+  private static final String TAG = "DBUtils";
+
   private static String formatParamForJSON(int param) {
     if (param == Integer.MIN_VALUE) return "null";
     else return String.format("%d", param);
@@ -39,16 +41,16 @@ public class DBUtils {
   }
   private static String formatParamForJSON(double param) {
     if (param == Double.NaN) return "null";
-    else return String.format("%f", param);
+    else return Double.toString(param); //String.format("%f", param);
   }
   private static String formatParamForJSON(float param) {
     if (param == Float.NaN) return "null";
-    else return String.format("%f", param);
+    else return Float.toString(param); //String.format("%f", param);
   }
   public static String jsonForOneFeature(Context ctx,
-                                          float x, float y, float z, float signal, long dateTime,
+                                          double x, double y, double z, float signal, long dateTime,
                                           String osName, String osVersion, String phoneModel,
-                                          String deviceId) {
+                                          String deviceId, String carrierId) {
     String json = ctx.getString(R.string.add_one_feature_json,
         formatParamForJSON(x),
         formatParamForJSON(y),
@@ -58,7 +60,9 @@ public class DBUtils {
         formatParamForJSON(osName),
         formatParamForJSON(osVersion),
         formatParamForJSON(phoneModel),
-        formatParamForJSON(deviceId));
+        formatParamForJSON(deviceId),
+        formatParamForJSON(carrierId)
+    );
     return json;
   }
 
@@ -73,8 +77,6 @@ public class DBUtils {
   /** Meant to be called from a worker thread **/
   public static Cursor getUnpostedRecords(SQLiteDatabase db, Context ctx) {
     String table = ctx.getString(R.string.viewname_unposted_records);
-/*    String where = getString(R.string.whereclause_unposted_records,
-        getString(R.string.columnname_was_added_to_fc));*/
     return
         db.query(table, null, null, null, null, null, null);
   }
@@ -92,15 +94,16 @@ public class DBUtils {
     List<String> jsonAdds = new ArrayList<>();
     while (cur.moveToNext()) {
       String jsonAdd = DBUtils.jsonForOneFeature(ctx,
-          cur.getFloat(cur.getColumnIndex(ctx.getString(R.string.columnname_longitude))),
-          cur.getFloat(cur.getColumnIndex(ctx.getString(R.string.columnname_latitude))),
-          cur.getFloat(cur.getColumnIndex(ctx.getString(R.string.columnname_altitude))),
+          cur.getDouble(cur.getColumnIndex(ctx.getString(R.string.columnname_longitude))),
+          cur.getDouble(cur.getColumnIndex(ctx.getString(R.string.columnname_latitude))),
+          cur.getDouble(cur.getColumnIndex(ctx.getString(R.string.columnname_altitude))),
           cur.getFloat(cur.getColumnIndex(ctx.getString(R.string.columnname_signalstrength))),
           cur.getLong(cur.getColumnIndex(ctx.getString(R.string.columnname_date))),
           cur.getString(cur.getColumnIndex(ctx.getString(R.string.columnname_osname))),
           cur.getString(cur.getColumnIndex(ctx.getString(R.string.columnname_osversion))),
           cur.getString(cur.getColumnIndex(ctx.getString(R.string.columnname_phonemodel))),
-          cur.getString(cur.getColumnIndex(ctx.getString(R.string.columnname_deviceid)))
+          cur.getString(cur.getColumnIndex(ctx.getString(R.string.columnname_deviceid))),
+          cur.getString(cur.getColumnIndex(ctx.getString(R.string.columnname_carrierid)))
       );
       jsonAdds.add(jsonAdd);
     }
@@ -111,7 +114,7 @@ public class DBUtils {
     String svcUrl = sharedPrefs.getString(ctx.getString(R.string.pref_key_feat_svc_url), null);
     List<Long> successes = new ArrayList<>();
     OkHttpClient http = new OkHttpClient();
-    MediaType mtJSON = MediaType.parse("application/json; charset=utf-8");
+//    MediaType mtJSON = MediaType.parse("application/json; charset=utf-8");
 
     RequestBody reqBody = new FormBody.Builder()
         .add("f", "json")
@@ -164,5 +167,36 @@ public class DBUtils {
     ContentValues postStatus = new ContentValues();
     postStatus.put(postStatusColumn, 1);
     db.update(table, postStatus, where, null);
+  }
+
+  public static long getUnpostedRecordsCount(SQLiteDatabase db, Context ctx) {
+    String table = ctx.getString(R.string.tablename_readings);
+    String[] cols = new String[]{"COUNT(1)"};
+    String where = ctx.getString(R.string.whereclause_unposted_records,
+        ctx.getString(R.string.columnname_was_added_to_fc));
+
+    Cursor cur = db.query(table, cols, where, null, null, null, null);
+    cur.moveToFirst();
+    long count = cur.getLong(0);
+    cur.close();
+    return count;
+  }
+
+  /** Helper to get the value of a pref intended to be an int but forced to be a string by
+   * EditTextPreference.
+   * @param prefs SharedPreferences object
+   * @param key The key of the SharedPreferences value desired
+   * @param sDefaultVal The string default value of the preference you want
+   * @return The integer stored as a string preference
+   */
+  public static int getIntFromStringPref(SharedPreferences prefs, String key, String sDefaultVal) {
+    String sVal = prefs.getString(key, sDefaultVal);
+    int val = Integer.MIN_VALUE;
+    try {
+      val = Integer.parseInt(sVal);
+    } catch (NumberFormatException e) {
+      Log.e(TAG, "getIntFromStringPref", e);
+    }
+    return val;
   }
 }

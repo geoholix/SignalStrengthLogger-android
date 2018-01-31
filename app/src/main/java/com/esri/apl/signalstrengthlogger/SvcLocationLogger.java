@@ -1,22 +1,28 @@
 package com.esri.apl.signalstrengthlogger;
 
 import android.annotation.SuppressLint;
+import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.location.Location;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.CellInfoLte;
@@ -39,8 +45,10 @@ import com.google.android.gms.tasks.Task;
 import org.json.JSONException;
 
 import java.io.IOException;
-import java.net.URL;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Logs signal strength readings at the prescribed displacement intervals.
@@ -49,24 +57,34 @@ import java.util.List;
  */
 @SuppressLint("MissingPermission")
 public class SvcLocationLogger extends Service {
-  private static final int SVC_ID = 1;
+  private static final int SVC_NOTIF_ID = 1;
   private static final int ACT_PI_REQ_CODE = 1;
   private static final String TAG = "SvcLocationLogger";
   private static final int MS_PER_S = 1000;
+  private static final int S_PER_MIN = 60;
 
-  private URL mUrlPostFeature = null;
-
-//  private SignalReading mSignalReading = null;
   private TelephonyManager mTelMgr;
   private FusedLocationProviderClient mFusedLocationClient = null;
+  private ConnectivityManager mConnectivityManager = null;
+
+  private Timer mSyncTimer = new Timer();
+
+  /** Don't use directly; use getter and setter instead. */
+  private boolean _isConnected = false;
+
+  /** Don't use directly; use getter and setter instead. */
+  private final AtomicLong _unsyncedRecordCount = new AtomicLong(0);
+
   private SharedPreferences mSharedPrefs = null;
   private SQLiteDatabase mDb;
 
   // Various fields needing one-time calculation
   private String mDeviceId;
-  private String mOsName = "Android";
-  private String mOsVersion = Integer.toString(Build.VERSION.SDK_INT);
-  private String mPhoneModel = Build.MANUFACTURER + " " + Build.MODEL;
+  private static final String mOsName = "Android";
+  private static final String mOsVersion = Integer.toString(Build.VERSION.SDK_INT);
+  private static final String mPhoneModel = Build.MANUFACTURER + " " + Build.MODEL;
+  private String mCellCarrierName;
+
 
   @Override
   public IBinder onBind(Intent intent) {
@@ -81,23 +99,25 @@ public class SvcLocationLogger extends Service {
     Log.d(TAG, "onDestroy");
   }
 
+  // onCreate() -> onStartCommand() -> startLogging()
   @Override
   public void onCreate() {
     super.onCreate();
     mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-    String sUrl = mSharedPrefs.getString(getString(R.string.pref_key_feat_svc_url), null);
-    try {
-      mUrlPostFeature = new URL(sUrl);
-    } catch (Exception e) {
-      Log.e(TAG, "Exception creating feature-creation URL.", e);
-    }
 
     mDeviceId = mSharedPrefs.getString(getString(R.string.pref_key_device_id), null);
 
     // This creates the API client, but doesn't call connect.
     mFusedLocationClient = new FusedLocationProviderClient(this);
-
     mTelMgr = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
+
+    mConnectivityManager = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
+
+    mCellCarrierName = "<Unobtainable>";
+    if (mTelMgr.getPhoneType() == TelephonyManager.PHONE_TYPE_CDMA
+        && mTelMgr.getSimState() == TelephonyManager.SIM_STATE_READY)
+      mCellCarrierName = mTelMgr.getSimOperatorName();
+    else mCellCarrierName = mTelMgr.getNetworkOperatorName();
 
     Log.d(TAG, "onCreate");
   }
@@ -109,7 +129,27 @@ public class SvcLocationLogger extends Service {
     return super.onStartCommand(intent, flags, startId);
   }
 
+  private Notification buildSvcForegroundNotification(String notText) {
+    // Create notification and bring to foreground
+    Intent intent = new Intent(this, ActMain.class);
+    PendingIntent contentIntent =
+        PendingIntent.getActivity(this, ACT_PI_REQ_CODE, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT);
 
+    NotificationCompat.Builder nb = new NotificationCompat.Builder(this, null)
+        .setSmallIcon(R.drawable.ic_cellsignal)
+        .setTicker(getString(R.string.notif_ticker))
+        .setContentTitle(getString(R.string.notif_title))
+        .setContentIntent(contentIntent);
+    if (notText != null) nb.setContentText(notText);
+
+    return nb.build();
+  }
+
+  private void updateSvcNotificationText(String notText) {
+    Notification not = buildSvcForegroundNotification(notText);
+    NotificationManagerCompat.from(this).notify(SVC_NOTIF_ID, not);
+  }
   /**
    * Performs various tasks to start logging, including:
    * <ul>
@@ -119,21 +159,8 @@ public class SvcLocationLogger extends Service {
    * </ul>
    */
   private void startLogging() {
-    // Create notification and bring to foreground
-    Intent intent = new Intent(this, ActMain.class);
-    PendingIntent contentIntent =
-        PendingIntent.getActivity(this, ACT_PI_REQ_CODE, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT);
-
-    NotificationCompat.Builder nb = new NotificationCompat.Builder(this)
-//                .setSmallIcon(android.R.drawable.ic_menu_compass)
-        .setSmallIcon(R.drawable.ic_cellsignal)
-        .setTicker(getString(R.string.notif_ticker))
-        .setContentTitle(getString(R.string.notif_title))
-//                .setContentText(getString(R.string.notif_content_text))
-        .setContentIntent(contentIntent);
-
-    startForeground(SVC_ID, nb.build());
+    Notification notification = buildSvcForegroundNotification(null);
+    startForeground(SVC_NOTIF_ID, notification);
 
     if (mDb == null || !mDb.isOpen()) {
       SQLiteOpenHelper dbhlp = new DBHelper(this);
@@ -160,13 +187,33 @@ public class SvcLocationLogger extends Service {
       }
     });
 
+    // Start listening to internet connectivity changes (for synchronization)
+    IntentFilter flt = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+    flt.addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED);
+    registerReceiver(mConnectivityStatusReceiver, flt);
+//    mIsConnected = isConnectedToNetwork(mConnectivityManager);
+
+    // Start synchronization on a timer
+    String sDefaultSyncMins = getString(R.string.pref_default_sync_interval);
+    int iSyncMins = DBUtils.getIntFromStringPref(mSharedPrefs,
+        getString(R.string.pref_key_sync_interval), sDefaultSyncMins);
+    int iSyncMS = iSyncMins * MS_PER_S * S_PER_MIN;
+
+    mSyncTimer.schedule(new TTSyncToFC(), iSyncMS, iSyncMS);
+    Log.d(TAG, "Sync every " + iSyncMS + " ms");
+
     Log.d(TAG, "startLogging");
   }
 
   private void stopLogging() {
+    // Stop synchronizing on a timer
+    mSyncTimer.cancel();
+
     // Sync updates to feature class
-    // TODO check connectivity first
-    postRecordsToFC();
+    Thread syncThread = syncRecordsToFCNow();
+
+    // Stop listening to internet connectivity changes
+    unregisterReceiver(mConnectivityStatusReceiver);
 
     // Stop listening to location updates
     mFusedLocationClient.removeLocationUpdates(mLocationListener);
@@ -175,12 +222,27 @@ public class SvcLocationLogger extends Service {
         .putBoolean(getString(R.string.pref_key_logging_enabled), false)
         .apply();
 
+    // Close database resources
+    // TODO Find a way to do the final sync without waiting here
+    try {
+      syncThread.join();
+
+      if (mDb != null && mDb.isOpen()) {
+        mDb.close();
+        mDb = null;
+      }
+      // Cleanup
+      SQLiteDatabase.releaseMemory();
+    } catch (InterruptedException e) {
+      Log.e(TAG, "Error waiting for sync thread", e);
+    }
+
     // Stop the service since it's no longer needed
-    stopForeground(true);
+//    stopForeground(true);
+    NotificationManagerCompat.from(this).cancel(SVC_NOTIF_ID);
 
     Log.d(TAG, "stopLogging");
   }
-
 
 
   private LocationCallback mLocationListener = new LocationCallback() {
@@ -207,8 +269,11 @@ public class SvcLocationLogger extends Service {
             vals.put(getString(R.string.columnname_osversion), mOsVersion);
             vals.put(getString(R.string.columnname_phonemodel), mPhoneModel);
             vals.put(getString(R.string.columnname_deviceid), mDeviceId);
+            vals.put(getString(R.string.columnname_carrierid), mCellCarrierName);
 
             mDb.insert(getString(R.string.tablename_readings), null, vals);
+
+            set_unsyncedRecordCount(get_unsyncedRecordCount() + 1);
           }
         }
       }).start();
@@ -250,31 +315,12 @@ public class SvcLocationLogger extends Service {
     return strength;
   }
 
-/*  private String getPostDataString(HashMap<String, String> params) throws UnsupportedEncodingException{
-    StringBuilder result = new StringBuilder();
-    boolean first = true;
-    for(Map.Entry<String, String> entry : params.entrySet()){
-      if (first)
-        first = false;
-      else
-        result.append("&");
-
-      result.append(URLEncoder.encode(entry.getKey(), "UTF-8"));
-//            result.append(entry.getKey());
-      result.append("=");
-      result.append(URLEncoder.encode(entry.getValue(), "UTF-8"));
-//            result.append(entry.getValue());
-    }
-
-    return result.toString();
-  }*/
 
   /**
    * Reads unposted records from local database and posts them as inserts to an online feature service.
-   * This will also close the database.
    */
-  private void postRecordsToFC() {
-    new Thread(new Runnable() {
+  private Thread syncRecordsToFCNow() {
+    Thread thread = new Thread(new Runnable() {
       @Override
       public void run() {
         Context ctx = SvcLocationLogger.this;
@@ -282,34 +328,86 @@ public class SvcLocationLogger extends Service {
         try {
           DBUtils.deletePreviouslyPostedRecords(mDb, ctx);
 
+          // Don't even try if there's nothing to sync
           Cursor curUnposted = DBUtils.getUnpostedRecords(mDb, ctx);
+          if (curUnposted.getCount() <= 0) return;
 
           // Post adds
           List<Long> recIdsSuccessfullyPosted;
           try {
             recIdsSuccessfullyPosted = DBUtils.postUnpostedRecords(curUnposted, ctx, mSharedPrefs);
+            long unposted = DBUtils.getUnpostedRecordsCount(mDb, ctx);
+            set_unsyncedRecordCount(unposted);
           } catch (IOException e) {
             throw new IOException("Error posting adds to feature service", e);
           } catch (JSONException e) {
             throw new Exception("Error parsing add results", e);
+          } finally {
+            curUnposted.close();
           }
 
 
           // Update Sqlite to mark the records as posted
           DBUtils.updateNewlySentRecordsAsPosted(mDb, ctx, recIdsSuccessfullyPosted);
         } catch (Exception e) {
-          Log.e(TAG, e.getLocalizedMessage());
+          Log.e(TAG, "Error synchronizing readings", e);
+          Notification notification = new NotificationCompat.Builder(ctx, null)
+              .setContentTitle(getString(R.string.title_err_synchronization))
+//              .setContentText(getString(R.string.msg_err_synchronization, e.getLocalizedMessage()))
+              .setStyle(new NotificationCompat.BigTextStyle()
+                        .bigText(getString(R.string.msg_err_synchronization, e.getLocalizedMessage())))
+              .setSmallIcon(android.R.drawable.stat_sys_warning)
+              .setGroup(getString(R.string.group_err_synchronization))
+              .build();
+          NotificationManagerCompat.from(ctx)
+              .notify(R.string.msg_err_synchronization, notification);
         }
-
-        if (mDb != null && mDb.isOpen()) {
-          mDb.close();
-          mDb = null;
-        }
-
-        // Cleanup
-        SQLiteDatabase.releaseMemory();
       }
-    }).start();
+    });
+    thread.start();
+    return thread;
+  }
+  private class TTSyncToFC extends TimerTask {
+    @Override
+    public void run() {
+      syncRecordsToFCNow();
+    }
   }
 
+  BroadcastReceiver mConnectivityStatusReceiver = new BroadcastReceiver() {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+      // Do any disconnected/reconnected tasks in setter
+      set_isConnected(isConnectedToNetwork(mConnectivityManager));
+    }
+  };
+
+  private boolean isConnectedToNetwork(ConnectivityManager cm) {
+    NetworkInfo ni = cm.getActiveNetworkInfo();
+    return ni != null && ni.isConnectedOrConnecting();
+  }
+
+  private boolean get_isConnected() {
+    return _isConnected;
+  }
+
+  private void set_isConnected(boolean _isConnected) {
+    this._isConnected = _isConnected;
+
+    // If reconnecting, synchronize
+    if (_isConnected) syncRecordsToFCNow();
+  }
+
+  public long get_unsyncedRecordCount() {
+    return _unsyncedRecordCount.get();
+  }
+
+  public void set_unsyncedRecordCount(long unsyncedRecordCount) {
+    this._unsyncedRecordCount.set(unsyncedRecordCount);
+    if (this._unsyncedRecordCount.get() == 0)
+      updateSvcNotificationText(null);
+    else if (this._unsyncedRecordCount.get() > 0 && this._unsyncedRecordCount.get() % 5 == 0)
+      updateSvcNotificationText(getString(R.string.notif_unsynced_records,
+          this._unsyncedRecordCount.get()));
+  }
 }

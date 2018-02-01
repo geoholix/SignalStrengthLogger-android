@@ -35,6 +35,7 @@ import android.util.Log;
 
 import com.esri.apl.signalstrengthlogger.data.DBHelper;
 import com.esri.apl.signalstrengthlogger.data.DBUtils;
+import com.esri.apl.signalstrengthlogger.data.ReadingDataPoint;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -45,6 +46,7 @@ import com.google.android.gms.tasks.Task;
 import org.json.JSONException;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -79,6 +81,7 @@ public class SvcLocationLogger extends Service {
 
   private SharedPreferences mSharedPrefs = null;
   private SQLiteDatabase mDb;
+  private final ArrayList<ReadingDataPoint> mChartData = new ArrayList<>();
 
   // Various fields needing one-time calculation
   private String mDeviceId;
@@ -86,6 +89,7 @@ public class SvcLocationLogger extends Service {
   private static final String mOsVersion = Integer.toString(Build.VERSION.SDK_INT);
   private static final String mPhoneModel = Build.MANUFACTURER + " " + Build.MODEL;
   private String mCellCarrierName;
+  private int MAX_CHART_DATA_POINTS;
 
 
   @Override
@@ -120,6 +124,8 @@ public class SvcLocationLogger extends Service {
         && mTelMgr.getSimState() == TelephonyManager.SIM_STATE_READY)
       mCellCarrierName = mTelMgr.getSimOperatorName();
     else mCellCarrierName = mTelMgr.getNetworkOperatorName();
+
+    MAX_CHART_DATA_POINTS = getResources().getInteger(R.integer.max_chart_data_points);
 
     Log.d(TAG, "onCreate");
   }
@@ -269,14 +275,19 @@ public class SvcLocationLogger extends Service {
           if (loc != null) { // Save to DB
             int signalStrength = getCellSignalStrength();
 
+            long datetime = loc.getTime();
+            double x = loc.getLongitude();
+            double y = loc.getLatitude();
+            double z = loc.getAltitude();
+
             // Save reading to DB
             ContentValues vals = new ContentValues();
-            vals.put(getString(R.string.columnname_longitude), loc.getLongitude());
-            vals.put(getString(R.string.columnname_latitude), loc.getLatitude());
-            if (loc.hasAltitude())
-              vals.put(getString(R.string.columnname_altitude), loc.getAltitude());
             vals.put(getString(R.string.columnname_signalstrength), signalStrength);
-            vals.put(getString(R.string.columnname_date), loc.getTime());
+            vals.put(getString(R.string.columnname_date), datetime);
+            vals.put(getString(R.string.columnname_longitude), x);
+            vals.put(getString(R.string.columnname_latitude), y);
+            if (loc.hasAltitude())
+              vals.put(getString(R.string.columnname_altitude), z);
             vals.put(getString(R.string.columnname_osname), mOsName);
             vals.put(getString(R.string.columnname_osversion), mOsVersion);
             vals.put(getString(R.string.columnname_phonemodel), mPhoneModel);
@@ -284,8 +295,22 @@ public class SvcLocationLogger extends Service {
             vals.put(getString(R.string.columnname_carrierid), mCellCarrierName);
 
             mDb.insert(getString(R.string.tablename_readings), null, vals);
-
             set_unsyncedRecordCount(get_unsyncedRecordCount() + 1);
+
+            // Save to chart data
+            ReadingDataPoint rdp = new ReadingDataPoint(
+                signalStrength, loc.getTime(), x, y, z, mOsName, mOsVersion,
+                mPhoneModel, mDeviceId, mCellCarrierName);
+            mChartData.add(rdp);
+            int overflow = mChartData.size() - MAX_CHART_DATA_POINTS;
+            while (overflow-- > 0) {
+              mChartData.remove(0);
+            }
+            Intent intent = new Intent();
+            intent.setAction(getString(R.string.intent_category_chart_data_available));
+            intent.putParcelableArrayListExtra(getString(R.string.extra_chart_data_list), mChartData);
+            sendBroadcast(intent);
+            Log.d(TAG, "Sent chart data broadcast");
           }
         }
       }).start();
@@ -370,7 +395,6 @@ public class SvcLocationLogger extends Service {
         } catch (Exception e) {
           Log.e(TAG, "Error synchronizing readings", e);
           String msg = e.getLocalizedMessage();
-          ((IOException)e).getCause();
           if (e.getCause() != null)
             msg += ":\n" + e.getCause().getLocalizedMessage();
           Notification notification = new NotificationCompat.Builder(ctx, null)
@@ -405,7 +429,7 @@ public class SvcLocationLogger extends Service {
 
   private boolean isConnectedToNetwork(ConnectivityManager cm) {
     NetworkInfo ni = cm.getActiveNetworkInfo();
-    return ni != null && ni.isConnectedOrConnecting();
+    return ni != null && ni.isConnected();
   }
 
   private boolean get_isConnected() {

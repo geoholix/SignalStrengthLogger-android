@@ -9,7 +9,7 @@
 
     <string name="pref_key_feat_svc_url">feat_svc_url</string>
     <string name="pref_title_feat_svc_url">Feature Service URL</string>
-    <string name="pref_default_feat_svc_url">https://services.arcgis.com/W6FrZiZ4flx7mLJe/arcgis/rest/services/SignalReadings_pilot/FeatureServer/0/addFeatures</string>
+    <string name="pref_default_feat_svc_url">https://services.arcgis.com/W6FrZiZ4flx7mLJe/arcgis/rest/services/SignalReadings_secure/FeatureServer/0/addFeatures</string>
 
     <string name="pref_key_user_id">user_id</string>
     <string name="pref_title_user_id">User ID</string>

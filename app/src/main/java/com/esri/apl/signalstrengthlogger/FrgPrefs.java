@@ -176,6 +176,7 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
             clearTokenPrefs();
             String sUserIdTitle = TextUtils.isEmpty(String.valueOf(value))
                 ? "<Unspecified> (feature service must be public)" : String.valueOf(value);
+            preference.setSummary(sUserIdTitle);
           } else if (preference.getKey().equals(getString(R.string.pref_key_user_pw))) {
             clearTokenPrefs();
             String sPwMask;

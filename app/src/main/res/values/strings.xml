@@ -46,4 +46,8 @@
     <!--Referer must be specified in token generation and in referer header when used-->
     <string name="agol_request_referer">http://apl.esri.com/SignalStrengthLogger</string>
     <integer name="agol_token_max_expiration">20160</integer>
+
+    <integer name="max_chart_data_points">15</integer>
+    <string name="intent_category_chart_data_available">com.esri.apl.signalstrengthlogger.ChartData</string>
+    <string name="extra_chart_data_list">chart_data_list</string>
 </resources>

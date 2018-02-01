@@ -39,4 +39,11 @@
     </string>
     <string name="group_err_synchronization">signal_strength_logger_sync_errors</string>
     <string name="notif_unsynced_records">%1$d records still unsynced</string>
+
+    <!--Token and credential generation; see
+        https://developers.arcgis.com/rest/geoenrichment/api-reference/accessing-the-service.htm-->
+    <string name="agol_token_url">https://www.arcgis.com/sharing/generateToken</string>
+    <!--Referer must be specified in token generation and in referer header when used-->
+    <string name="agol_request_referer">http://apl.esri.com/SignalStrengthLogger</string>
+    <integer name="agol_token_max_expiration">20160</integer>
 </resources>

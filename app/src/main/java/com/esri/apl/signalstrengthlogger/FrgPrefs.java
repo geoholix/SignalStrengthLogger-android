@@ -142,7 +142,14 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
 
   }
 
-
+  /** If user changes user id or password, invalidate stored AGOL token **/
+  private void clearTokenPrefs() {
+    SharedPreferences.Editor editor = mSharedPrefs.edit();
+    editor.remove(getString(R.string.pref_key_agol_token));
+    editor.remove(getString(R.string.pref_key_agol_token_expiration_epoch));
+    editor.remove(getString(R.string.pref_key_agol_ssl));
+    editor.apply();
+  }
   /**
    * A preference value change listener that updates the preference's summary
    * to reflect its new value.
@@ -165,10 +172,20 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
                 index >= 0
                     ? listPreference.getEntries()[index]
                     : null);
-          } else if (preference.getKey().equals(getString(R.string.pref_key_user_pw)) && value != null) {
-            // Replace password with asterisks
-            int pwLen = value.toString().length();
-            String sPwMask = new String(new char[pwLen]).replace("\0", "*");
+          } else if (preference.getKey().equals(getString(R.string.pref_key_user_id))) {
+            clearTokenPrefs();
+            String sUserIdTitle = TextUtils.isEmpty(String.valueOf(value))
+                ? "<Unspecified> (feature service must be public)" : String.valueOf(value);
+          } else if (preference.getKey().equals(getString(R.string.pref_key_user_pw))) {
+            clearTokenPrefs();
+            String sPwMask;
+            if (TextUtils.isEmpty(String.valueOf(value))) {
+              sPwMask = stringValue;
+            } else {
+              // Replace password with asterisks
+              int pwLen = stringValue.toString().length();
+              sPwMask = new String(new char[pwLen]).replace("\0", "*");
+            }
             preference.setSummary(sPwMask);
           } else if (preference.getKey().equals(getString(
               R.string.pref_key_logging_enabled))

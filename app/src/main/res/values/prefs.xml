@@ -9,8 +9,7 @@
 
     <string name="pref_key_feat_svc_url">feat_svc_url</string>
     <string name="pref_title_feat_svc_url">Feature Service URL</string>
-    <!--<string name="pref_default_feat_svc_url">https://services.arcgis.com/6DIQcwlPy8knb6sg/arcgis/rest/services/cellsignal/FeatureServer/0/addFeatures</string>-->
-    <string name="pref_default_feat_svc_url">https://services.arcgis.com/W6FrZiZ4flx7mLJe/arcgis/rest/services/SignalReadings/FeatureServer/0/addFeatures</string>
+    <string name="pref_default_feat_svc_url">https://services.arcgis.com/W6FrZiZ4flx7mLJe/arcgis/rest/services/SignalReadings_pilot/FeatureServer/0/addFeatures</string>
 
     <string name="pref_key_user_id">user_id</string>
     <string name="pref_title_user_id">User ID</string>
@@ -38,10 +37,10 @@
     <string name="pref_max_sync_interval">600</string>
     <string name="pref_default_sync_interval">10</string>
 
-    <!--    <string name="pref_header_general">General</string> -->
-
     <string name="pref_key_device_id">device_id</string>
     <string name="pref_title_device_id">Device ID</string>
 
-
+    <string name="pref_key_agol_token">agol_token</string>
+    <string name="pref_key_agol_token_expiration_epoch">agol_token_expiration</string>
+    <string name="pref_key_agol_ssl">agol_token_must_use_ssl</string>
 </resources>

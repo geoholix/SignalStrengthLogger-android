@@ -48,6 +48,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -58,6 +59,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @SuppressLint("MissingPermission")
 public class SvcLocationLogger extends Service {
   private static final int SVC_NOTIF_ID = 1;
+  private static final int ERR_NOTIF_ID = 2;
   private static final int ACT_PI_REQ_CODE = 1;
   private static final String TAG = "SvcLocationLogger";
   private static final int MS_PER_S = 1000;
@@ -70,7 +72,7 @@ public class SvcLocationLogger extends Service {
   private Timer mSyncTimer = new Timer();
 
   /** Don't use directly; use getter and setter instead. */
-  private boolean _isConnected = false;
+  private AtomicBoolean _isConnected = new AtomicBoolean(false);
 
   /** Don't use directly; use getter and setter instead. */
   private final AtomicLong _unsyncedRecordCount = new AtomicLong(0);
@@ -167,6 +169,17 @@ public class SvcLocationLogger extends Service {
       mDb = dbhlp.getWritableDatabase();
     }
 
+    // Delete previously posted records from local database
+    new Thread(new Runnable() {
+      @Override
+      public void run() {
+        DBUtils.deletePreviouslyPostedRecords(mDb, SvcLocationLogger.this);
+      }
+    }).start();
+
+    // Get initial connectivity status
+    set_isConnected(isConnectedToNetwork(mConnectivityManager));
+
     // Start listening to location updates
     String sDisp = mSharedPrefs.getString(getString(R.string.pref_key_tracking_displacement), "1");
     int iDisp = Integer.parseInt(sDisp);
@@ -191,7 +204,6 @@ public class SvcLocationLogger extends Service {
     IntentFilter flt = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
     flt.addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED);
     registerReceiver(mConnectivityStatusReceiver, flt);
-//    mIsConnected = isConnectedToNetwork(mConnectivityManager);
 
     // Start synchronization on a timer
     String sDefaultSyncMins = getString(R.string.pref_default_sync_interval);
@@ -248,7 +260,7 @@ public class SvcLocationLogger extends Service {
   private LocationCallback mLocationListener = new LocationCallback() {
     @Override
     public void onLocationResult(final LocationResult locationResult) {
-      Log.d(TAG, "onLocationResults");
+//      Log.d(TAG, "onLocationResults");
 
       new Thread(new Runnable() {
         @Override
@@ -285,7 +297,7 @@ public class SvcLocationLogger extends Service {
   /** Signal strength value
    *  Note: Suppress missing permission error, as this check was done in the main activity
    *  before this service was started.
-   * @return 0 through 4
+   * @return 0 through 4 (0 even if signal missing or invalid)
    */
   // TODO Detect and handle transition to/from airplane mode
   private int getCellSignalStrength() {
@@ -312,7 +324,7 @@ public class SvcLocationLogger extends Service {
     }
     Log.i(TAG, "Strength: " + strength);
 
-    return strength;
+    return Math.max(0, strength);
   }
 
 
@@ -323,12 +335,14 @@ public class SvcLocationLogger extends Service {
     Thread thread = new Thread(new Runnable() {
       @Override
       public void run() {
+        Log.d(TAG, "Starting sync");
+
         Context ctx = SvcLocationLogger.this;
 
         try {
-          DBUtils.deletePreviouslyPostedRecords(mDb, ctx);
+          // Don't even try if disconnected or there's nothing to sync
+          if (!get_isConnected()) return;
 
-          // Don't even try if there's nothing to sync
           Cursor curUnposted = DBUtils.getUnpostedRecords(mDb, ctx);
           if (curUnposted.getCount() <= 0) return;
 
@@ -336,10 +350,8 @@ public class SvcLocationLogger extends Service {
           List<Long> recIdsSuccessfullyPosted;
           try {
             recIdsSuccessfullyPosted = DBUtils.postUnpostedRecords(curUnposted, ctx, mSharedPrefs);
-            long unposted = DBUtils.getUnpostedRecordsCount(mDb, ctx);
-            set_unsyncedRecordCount(unposted);
           } catch (IOException e) {
-            throw new IOException("Error posting adds to feature service", e);
+            throw e;
           } catch (JSONException e) {
             throw new Exception("Error parsing add results", e);
           } finally {
@@ -349,18 +361,27 @@ public class SvcLocationLogger extends Service {
 
           // Update Sqlite to mark the records as posted
           DBUtils.updateNewlySentRecordsAsPosted(mDb, ctx, recIdsSuccessfullyPosted);
+          long unposted = DBUtils.getUnpostedRecordsCount(mDb, ctx);
+          set_unsyncedRecordCount(unposted);
+          Log.d(TAG, unposted + " records are unposted");
+
+          // Success; clear any error notification
+          NotificationManagerCompat.from(ctx).cancel(ERR_NOTIF_ID);
         } catch (Exception e) {
           Log.e(TAG, "Error synchronizing readings", e);
+          String msg = e.getLocalizedMessage();
+          ((IOException)e).getCause();
+          if (e.getCause() != null)
+            msg += ":\n" + e.getCause().getLocalizedMessage();
           Notification notification = new NotificationCompat.Builder(ctx, null)
               .setContentTitle(getString(R.string.title_err_synchronization))
-//              .setContentText(getString(R.string.msg_err_synchronization, e.getLocalizedMessage()))
               .setStyle(new NotificationCompat.BigTextStyle()
-                        .bigText(getString(R.string.msg_err_synchronization, e.getLocalizedMessage())))
+                        .bigText(getString(R.string.msg_err_synchronization, msg)))
               .setSmallIcon(android.R.drawable.stat_sys_warning)
               .setGroup(getString(R.string.group_err_synchronization))
               .build();
           NotificationManagerCompat.from(ctx)
-              .notify(R.string.msg_err_synchronization, notification);
+              .notify(ERR_NOTIF_ID, notification);
         }
       }
     });
@@ -388,14 +409,15 @@ public class SvcLocationLogger extends Service {
   }
 
   private boolean get_isConnected() {
-    return _isConnected;
+    return this._isConnected.get();
   }
 
-  private void set_isConnected(boolean _isConnected) {
-    this._isConnected = _isConnected;
-
-    // If reconnecting, synchronize
-    if (_isConnected) syncRecordsToFCNow();
+  private void set_isConnected(boolean isConnected) {
+    if (this._isConnected.get() != isConnected) {
+      this._isConnected.set(isConnected);
+      // If reconnecting, synchronize
+      if (isConnected) syncRecordsToFCNow();
+    }
   }
 
   public long get_unsyncedRecordCount() {
@@ -403,11 +425,11 @@ public class SvcLocationLogger extends Service {
   }
 
   public void set_unsyncedRecordCount(long unsyncedRecordCount) {
+    Log.d(TAG, "set_unsyncedRecordCount => " + unsyncedRecordCount);
+    if (this._unsyncedRecordCount.get() == 0 || this._unsyncedRecordCount.get() % 5 == 0)
+      updateSvcNotificationText(
+          getString(R.string.notif_unsynced_records, this._unsyncedRecordCount.get()));
+
     this._unsyncedRecordCount.set(unsyncedRecordCount);
-    if (this._unsyncedRecordCount.get() == 0)
-      updateSvcNotificationText(null);
-    else if (this._unsyncedRecordCount.get() > 0 && this._unsyncedRecordCount.get() % 5 == 0)
-      updateSvcNotificationText(getString(R.string.notif_unsynced_records,
-          this._unsyncedRecordCount.get()));
   }
 }

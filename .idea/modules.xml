@@ -3,10 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/SignalStrengthLogger.iml" filepath="$PROJECT_DIR$/SignalStrengthLogger.iml" />
-      <module fileurl="file://C:\Projects\Android\2018_SignalStrengthLogger\SignalStrengthLogger-android\SignalStrengthLogger.iml" filepath="C:\Projects\Android\2018_SignalStrengthLogger\SignalStrengthLogger-android\SignalStrengthLogger.iml" />
-      <module fileurl="file://E:\Projects\Android\2018_SignalStrengthLogger\SignalStrengthLogger\SignalStrengthLogger-android.iml" filepath="E:\Projects\Android\2018_SignalStrengthLogger\SignalStrengthLogger\SignalStrengthLogger-android.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
-      <module fileurl="file://C:\Projects\Android\2018_SignalStrengthLogger\SignalStrengthLogger-android\app\app.iml" filepath="C:\Projects\Android\2018_SignalStrengthLogger\SignalStrengthLogger-android\app\app.iml" />
     </modules>
   </component>
 </project>

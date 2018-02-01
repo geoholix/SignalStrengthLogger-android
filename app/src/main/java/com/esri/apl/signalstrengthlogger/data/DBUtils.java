@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.support.annotation.WorkerThread;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -71,14 +72,15 @@ public class DBUtils {
     String where = ctx.getString(R.string.whereclause_posted_records,
         ctx.getString(R.string.columnname_was_added_to_fc));
     String table = ctx.getString(R.string.tablename_readings);
-    int iRes = db.delete(table, where, null);
+    db.delete(table, where, null);
   }
 
   /** Meant to be called from a worker thread **/
   public static Cursor getUnpostedRecords(SQLiteDatabase db, Context ctx) {
     String table = ctx.getString(R.string.viewname_unposted_records);
-    return
-        db.query(table, null, null, null, null, null, null);
+    return db.query(
+        table, null, null, null,
+        null, null, null);
   }
 
   /** Meant to be called from a worker thread
@@ -87,6 +89,7 @@ public class DBUtils {
    * @param sharedPrefs Shared preferences
    * @return list of rowids of records that were successfully posted
    * **/
+  @WorkerThread
   public static List<Long> postUnpostedRecords(
       Cursor cur, Context ctx, SharedPreferences sharedPrefs)
       throws IOException, JSONException {
@@ -108,22 +111,28 @@ public class DBUtils {
       jsonAdds.add(jsonAdd);
     }
     String sJsonAdds = "[" + TextUtils.join(",", jsonAdds.toArray(new String[]{})) + "]";
-//    String sParams = "?f=json&features=" + sJsonAdds;
+
+    // If user id specified, try to get a token to use
+    TokenInfo tokenInfo = null;
+    boolean bUserIdSpecified = !TextUtils
+        .isEmpty(sharedPrefs.getString(ctx.getString(R.string.pref_key_user_id), null));
+    if (bUserIdSpecified) tokenInfo = getAGOLToken(ctx, sharedPrefs);
 
     // Post via REST
     String svcUrl = sharedPrefs.getString(ctx.getString(R.string.pref_key_feat_svc_url), null);
     List<Long> successes = new ArrayList<>();
     OkHttpClient http = new OkHttpClient();
-//    MediaType mtJSON = MediaType.parse("application/json; charset=utf-8");
 
-    RequestBody reqBody = new FormBody.Builder()
+    FormBody.Builder fBuild = new FormBody.Builder()
         .add("f", "json")
         .add("rollbackOnFailure", "false")
-        .add("features", sJsonAdds)
-        .build();
+        .add("features", sJsonAdds);
+    if (bUserIdSpecified) fBuild.add("token", tokenInfo.get_token());
+    RequestBody reqBody = fBuild.build();
     Request req = new Request.Builder()
         .url(svcUrl)
         .post(reqBody)
+        .header("referer", ctx.getString(R.string.agol_request_referer))
         .build();
     Response resp = http.newCall(req).execute();
 
@@ -133,7 +142,7 @@ public class DBUtils {
 
     // If error, exit
     if (res.has("error")) {
-      throw new IOException("Error adding features: " + res.getJSONObject("error")
+      throw new IOException("Error posting features: " + res.getJSONObject("error")
         .getJSONArray("details").join("; "));
     }
 
@@ -153,6 +162,73 @@ public class DBUtils {
     }
 
     return successes;
+  }
+
+  /** Gets a REST token from arcgis.com given the user-specified id and password.
+   * Meant to be called from a worker thread.
+   *
+   * @param ctx Calling routine's context
+   * @param prefs SharedPreferences object for this app
+   * @return Json response from token generator, including token, expiration epoch, and ssl (true/false)
+   * @throws IOException
+   * @throws JSONException
+   */
+  @WorkerThread
+  public static TokenInfo getAGOLToken(Context ctx, SharedPreferences prefs) throws IOException, JSONException {
+    long now = System.currentTimeMillis();
+    // If it takes longer than a half hour to do one sync, we've got bigger problems...
+    final long ONEHALFHOUR_MILLIS = 30 * 60 * 1000;
+    String token = prefs.getString(ctx.getString(R.string.pref_key_agol_token), null);
+    long expiration = prefs.getLong(ctx.getString(R.string.pref_key_agol_token_expiration_epoch), Long.MIN_VALUE);
+    boolean mustUseSSL = prefs.getBoolean(ctx.getString(R.string.pref_key_agol_ssl), true);
+    TokenInfo tokenInfo;
+
+    if (TextUtils.isEmpty(token) || expiration < now + ONEHALFHOUR_MILLIS) { // Get a new token
+
+      OkHttpClient http = new OkHttpClient();
+
+      int iDurationMins = ctx.getResources().getInteger(R.integer.agol_token_max_expiration);
+      String referer = ctx.getString(R.string.agol_request_referer);
+      String svcUrl = ctx.getString(R.string.agol_token_url);
+      String userId = prefs.getString(ctx.getString(R.string.pref_key_user_id), "");
+      String password = prefs.getString(ctx.getString(R.string.pref_key_user_pw), "");
+
+      RequestBody reqBody = new FormBody.Builder()
+          .add("f", "json")
+          .add("username", userId)
+          .add("password", password)
+          .add("referer", referer)
+          .add("expiration", Integer.toString(iDurationMins))
+          .build();
+      Request req = new Request.Builder()
+          .url(svcUrl)
+          .post(reqBody)
+          .build();
+
+      Response resp = http.newCall(req).execute();
+      // Examine results and return list of rowids of successes
+      String jsonResp = resp.body().string();
+      JSONObject res = new JSONObject(jsonResp);
+
+      // If error, exit
+      if (res.has("error")) {
+        String msg = res.getJSONObject("error").getString("message");
+        throw new IOException(msg + ": " + res.getJSONObject("error")
+            .getJSONArray("details").join("; "));
+      }
+      tokenInfo = new TokenInfo(res);
+      // Store token info for later use
+      SharedPreferences.Editor editor = prefs.edit();
+      editor.putString(ctx.getString(R.string.pref_key_agol_token), tokenInfo.get_token());
+      editor.putLong(ctx.getString(R.string.pref_key_agol_token_expiration_epoch),
+          tokenInfo.get_expirationEpoch());
+      editor.putBoolean(ctx.getString(R.string.pref_key_agol_ssl), tokenInfo.get_mustUseSSL());
+      editor.apply();
+    } else { // The saved one's still good
+      tokenInfo = new TokenInfo(token, expiration, mustUseSSL);
+    }
+
+    return tokenInfo;
   }
 
   /** Meant to be called from a worker thread.<p/>
@@ -179,6 +255,7 @@ public class DBUtils {
     cur.moveToFirst();
     long count = cur.getLong(0);
     cur.close();
+
     return count;
   }
 

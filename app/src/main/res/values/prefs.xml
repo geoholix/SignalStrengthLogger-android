@@ -22,7 +22,7 @@
 
     <string name="pref_key_tracking_displacement">tracking_displacement</string>
     <string name="pref_title_tracking_displacement">Log how often (meters)?</string>
-    <string name="pref_default_tracking_displacement">1</string>
+    <string name="pref_default_tracking_displacement">30</string>
     <string name="pref_min_tracking_displacement">0</string>
     <string name="pref_max_tracking_displacement">300</string>
 
@@ -30,7 +30,7 @@
     <string name="pref_title_tracking_interval">Log how often (seconds)?</string>
     <string name="pref_min_tracking_interval">0</string>
     <string name="pref_max_tracking_interval">3600</string>
-    <string name="pref_default_tracking_interval">5</string>
+    <string name="pref_default_tracking_interval">10</string>
     <string name="msg_validation_interval_displacement_sync">Please enter a value from %1$d to %2$d</string>
 
     <string name="pref_key_sync_interval">sync_interval</string>

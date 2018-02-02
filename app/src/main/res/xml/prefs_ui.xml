@@ -13,6 +13,21 @@
              dismiss it. -->
         <!-- NOTE: ListPreference's summary should be set to its value by the activity code. -->
 
+    <EditTextPreference
+        android:key="@string/pref_key_tracking_displacement"
+        android:dependency="@string/pref_key_logging_enabled"
+        android:title="@string/pref_title_tracking_displacement"
+        android:selectAllOnFocus="true"
+        android:defaultValue="@string/pref_default_tracking_displacement"
+        android:inputType="number"
+        android:maxLength="3"
+        android:numeric="integer"/>
+    <!--    <SeekBarPreference
+            android:key="@string/pref_key_tracking_displacement"
+            android:dependency="@string/pref_key_logging_enabled"
+            android:title="@string/pref_title_tracking_displacement"
+            android:max="@string/pref_max_tracking_displacement"
+            android:defaultValue="@string/pref_default_tracking_displacement"/>-->
         <EditTextPreference
             android:key="@string/pref_key_tracking_interval"
             android:dependency="@string/pref_key_logging_enabled"
@@ -29,21 +44,6 @@
                 android:max="@string/pref_max_tracking_interval"
                 android:defaultValue="@string/pref_default_tracking_interval"
                 />-->
-        <EditTextPreference
-            android:key="@string/pref_key_tracking_displacement"
-            android:dependency="@string/pref_key_logging_enabled"
-            android:title="@string/pref_title_tracking_displacement"
-            android:selectAllOnFocus="true"
-            android:defaultValue="@string/pref_default_tracking_displacement"
-            android:inputType="number"
-            android:maxLength="3"
-            android:numeric="integer"/>
-        <!--    <SeekBarPreference
-                android:key="@string/pref_key_tracking_displacement"
-                android:dependency="@string/pref_key_logging_enabled"
-                android:title="@string/pref_title_tracking_displacement"
-                android:max="@string/pref_max_tracking_displacement"
-                android:defaultValue="@string/pref_default_tracking_displacement"/>-->
         <EditTextPreference
             android:key="@string/pref_key_sync_interval"
             android:dependency="@string/pref_key_logging_enabled"

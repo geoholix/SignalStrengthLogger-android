@@ -13,6 +13,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.LinearLayout;
 
+import com.crashlytics.android.Crashlytics;
 import com.esri.apl.signalstrengthlogger.data.DBHelper;
 import com.esri.apl.signalstrengthlogger.data.ReadingDataPoint;
 import com.github.mikephil.charting.charts.LineChart;
@@ -27,6 +28,8 @@ import com.github.mikephil.charting.formatter.IAxisValueFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.fabric.sdk.android.Fabric;
+
 public class ActMain extends AppCompatActivity {
   public final static String TAG = "ActMain";
   private LineChart mSignalChart;
@@ -35,6 +38,9 @@ public class ActMain extends AppCompatActivity {
   @Override
   protected void onCreate(@Nullable Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+
+    Fabric.with(this, new Crashlytics());
+
     setContentView(R.layout.act_main);
 
     // Create the SQLite database if needed

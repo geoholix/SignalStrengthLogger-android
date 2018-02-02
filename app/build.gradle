@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'io.fabric'
 
 android {
     signingConfigs {
@@ -43,4 +44,7 @@ dependencies {
     implementation 'com.takisoft.fix:preference-v7:26+'
     implementation 'com.squareup.okhttp3:okhttp:3.9.1'
     implementation 'com.github.PhilJay:MPAndroidChart:v3.0.3'
+    compile('com.crashlytics.sdk.android:crashlytics:2.8.0@aar') {
+        transitive = true;
+    }
 }

@@ -27,3 +27,6 @@
 -keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
 -keep class com.github.mikephil.charting.** { *; }
 -dontwarn io.realm.**
+#Crashlytics
+-keepattributes *Annotation*
+-keepattributes SourceFile,LineNumberTable

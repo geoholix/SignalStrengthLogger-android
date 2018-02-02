@@ -50,4 +50,6 @@
     <integer name="max_chart_data_points">15</integer>
     <string name="intent_category_chart_data_available">com.esri.apl.signalstrengthlogger.ChartData</string>
     <string name="extra_chart_data_list">chart_data_list</string>
+
+    <string name="app_version">Version %1$s debug</string>
 </resources>

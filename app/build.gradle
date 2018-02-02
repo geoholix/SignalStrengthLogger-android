@@ -1,13 +1,22 @@
 apply plugin: 'com.android.application'
 
 android {
+    signingConfigs {
+        config {
+            keyPassword 'benchmark'
+            storeFile file('E:/Projects/Android/apl.key')
+            storePassword 'benchmark'
+            keyAlias 'esri apl android'
+        }
+    }
     compileSdkVersion 26
     defaultConfig {
         applicationId "com.esri.apl.signalstrengthlogger"
         minSdkVersion 18
         targetSdkVersion 25
         versionCode 1
-        versionName "1.0"
+        versionName '0.5a'
+        signingConfig signingConfigs.config
     }
     buildTypes {
         release {

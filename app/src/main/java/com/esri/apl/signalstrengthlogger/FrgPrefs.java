@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -16,6 +17,7 @@ import android.support.v7.preference.PreferenceFragmentCompat;
 import android.support.v7.preference.PreferenceManager;
 import android.support.v7.preference.SwitchPreferenceCompat;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Gravity;
 import android.widget.Toast;
 
@@ -24,6 +26,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
+  private final static String TAG = "FrgPrefs";
   // onPermissionsResult needs to know when the permissions request was made
   private final static int REQ_PERMISSIONS_ON_STARTUP = 1;
   private final static int REQ_PERMISSIONS_ON_STARTLOGGING = 2;
@@ -105,6 +108,17 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
     // Add 'general' preferences.
     addPreferencesFromResource(R.xml.prefs_ui);
 
+    // Set app version as a preference category title
+    String version = null;
+    try {
+      PackageInfo pinfo = 
+          getActivity().getPackageManager().getPackageInfo(getActivity().getPackageName(), 0);
+      version = pinfo.versionName;
+    } catch (PackageManager.NameNotFoundException e) {
+      Log.e(TAG, "Error getting app version info", e);
+    }
+    findPreference(getString(R.string.pref_key_app_version))
+        .setTitle(getString(R.string.app_version, version));
 /*        // Add 'notifications' preferences, and a corresponding header.
         PreferenceCategory fakeHeader = new PreferenceCategory(this);
         fakeHeader.setTitle(R.string.pref_header_notifications);

@@ -11,15 +11,18 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.LinearLayout;
 
 import com.esri.apl.signalstrengthlogger.data.DBHelper;
 import com.esri.apl.signalstrengthlogger.data.ReadingDataPoint;
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.AxisBase;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.formatter.IAxisValueFormatter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +30,7 @@ import java.util.List;
 public class ActMain extends AppCompatActivity {
   public final static String TAG = "ActMain";
   private LineChart mSignalChart;
+  private LinearLayout mLytSignalChart;
 
   @Override
   protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -43,17 +47,28 @@ public class ActMain extends AppCompatActivity {
       }
     })).start();
 
+    mLytSignalChart = (LinearLayout)findViewById(R.id.lytSignalChart);
+
     // Chart initialization
     mSignalChart = (LineChart)findViewById(R.id.signalChart);
     mSignalChart.setDrawGridBackground(false);
+    mSignalChart.setDescription(null);
+    mSignalChart.getAxisRight().setEnabled(false);
     XAxis xaxis = mSignalChart.getXAxis();
     xaxis.setEnabled(false);
-    xaxis.setAxisMaximum(14f);
-    xaxis.setAxisMinimum(0f);
-    xaxis.setLabelCount(5);
     YAxis yaxis = mSignalChart.getAxisLeft();
+    yaxis.setTextSize(12);
+    yaxis.setLabelCount(5, true);
     yaxis.setAxisMaximum(4f);
     yaxis.setAxisMinimum(0f);
+    yaxis.setDrawZeroLine(true);
+  }
+
+  private class ChartYAxisFormatter implements IAxisValueFormatter {
+    @Override
+    public String getFormattedValue(float value, AxisBase axis) {
+      return String.valueOf(Math.round(value));
+    }
   }
 
   @Override
@@ -88,11 +103,18 @@ public class ActMain extends AppCompatActivity {
       }
       LineDataSet dataset = new LineDataSet(chartEntries, "Readings");
       dataset.setMode(LineDataSet.Mode.STEPPED);
+      dataset.setCircleColor(Color.BLACK);
       dataset.setColor(Color.BLACK);
+      dataset.setDrawValues(false);
+      dataset.setFillColor(Color.DKGRAY);
+      dataset.setFillAlpha(85);
+      dataset.setDrawFilled(true);
       LineData data = new LineData(dataset);
       mSignalChart.setData(data);
+      mSignalChart.getLegend().setEnabled(false);
       mSignalChart.invalidate();
-      mSignalChart.setVisibility(View.VISIBLE);
+
+      mLytSignalChart.setVisibility(View.VISIBLE);
     }
   };
 }

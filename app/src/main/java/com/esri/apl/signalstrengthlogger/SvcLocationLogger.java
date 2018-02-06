@@ -10,12 +10,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.location.Location;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
@@ -34,8 +32,9 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.esri.apl.signalstrengthlogger.data.DBHelper;
-import com.esri.apl.signalstrengthlogger.data.DBUtils;
 import com.esri.apl.signalstrengthlogger.data.ReadingDataPoint;
+import com.esri.apl.signalstrengthlogger.util.DBUtils;
+import com.esri.apl.signalstrengthlogger.util.NetUtils;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -43,9 +42,6 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
 
-import org.json.JSONException;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
@@ -61,7 +57,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @SuppressLint("MissingPermission")
 public class SvcLocationLogger extends Service {
   private static final int SVC_NOTIF_ID = 1;
-  private static final int ERR_NOTIF_ID = 2;
+  private static final int SYNC_ERR_NOTIF_ID = 2;
   private static final int ACT_PI_REQ_CODE = 1;
   private static final String TAG = "SvcLocationLogger";
   private static final int MS_PER_S = 1000;
@@ -184,7 +180,7 @@ public class SvcLocationLogger extends Service {
     }).start();
 
     // Get initial connectivity status
-    set_isConnected(isConnectedToNetwork(mConnectivityManager));
+    set_isConnected(NetUtils.isConnectedToNetwork(mConnectivityManager));
 
     // Start listening to location updates
     String sDisp = mSharedPrefs.getString(getString(R.string.pref_key_tracking_displacement), "1");
@@ -236,9 +232,10 @@ public class SvcLocationLogger extends Service {
     // Stop listening to location updates
     mFusedLocationClient.removeLocationUpdates(mLocationListener);
 
-    mSharedPrefs.edit()
-        .putBoolean(getString(R.string.pref_key_logging_enabled), false)
-        .apply();
+    if (mSharedPrefs.getBoolean(getString(R.string.pref_key_logging_enabled), true))
+      mSharedPrefs.edit()
+          .putBoolean(getString(R.string.pref_key_logging_enabled), false)
+          .apply();
 
     // Close database resources
     // TODO Find a way to do the final sync without waiting here
@@ -347,9 +344,10 @@ public class SvcLocationLogger extends Service {
         }
       }
     }
-    Log.i(TAG, "Strength: " + strength);
+    strength = Math.max(0, strength);
+    Log.d(TAG, "Strength: " + strength);
 
-    return Math.max(0, strength);
+    return strength;
   }
 
 
@@ -365,33 +363,13 @@ public class SvcLocationLogger extends Service {
         Context ctx = SvcLocationLogger.this;
 
         try {
-          // Don't even try if disconnected or there's nothing to sync
-          if (!get_isConnected()) return;
+          long unposted = DBUtils.doSyncRecords(ctx, mDb, mSharedPrefs, mConnectivityManager);
 
-          Cursor curUnposted = DBUtils.getUnpostedRecords(mDb, ctx);
-          if (curUnposted.getCount() <= 0) return;
-
-          // Post adds
-          List<Long> recIdsSuccessfullyPosted;
-          try {
-            recIdsSuccessfullyPosted = DBUtils.postUnpostedRecords(curUnposted, ctx, mSharedPrefs);
-          } catch (IOException e) {
-            throw e;
-          } catch (JSONException e) {
-            throw new Exception("Error parsing add results", e);
-          } finally {
-            curUnposted.close();
-          }
-
-
-          // Update Sqlite to mark the records as posted
-          DBUtils.updateNewlySentRecordsAsPosted(mDb, ctx, recIdsSuccessfullyPosted);
-          long unposted = DBUtils.getUnpostedRecordsCount(mDb, ctx);
           set_unsyncedRecordCount(unposted);
           Log.d(TAG, unposted + " records are unposted");
 
           // Success; clear any error notification
-          NotificationManagerCompat.from(ctx).cancel(ERR_NOTIF_ID);
+          NotificationManagerCompat.from(ctx).cancel(SYNC_ERR_NOTIF_ID);
         } catch (Exception e) {
           Log.e(TAG, "Error synchronizing readings", e);
           String msg = e.getLocalizedMessage();
@@ -405,7 +383,7 @@ public class SvcLocationLogger extends Service {
               .setGroup(getString(R.string.group_err_synchronization))
               .build();
           NotificationManagerCompat.from(ctx)
-              .notify(ERR_NOTIF_ID, notification);
+              .notify(SYNC_ERR_NOTIF_ID, notification);
         }
       }
     });
@@ -423,14 +401,10 @@ public class SvcLocationLogger extends Service {
     @Override
     public void onReceive(Context context, Intent intent) {
       // Do any disconnected/reconnected tasks in setter
-      set_isConnected(isConnectedToNetwork(mConnectivityManager));
+      set_isConnected(NetUtils.isConnectedToNetwork(mConnectivityManager));
     }
   };
 
-  private boolean isConnectedToNetwork(ConnectivityManager cm) {
-    NetworkInfo ni = cm.getActiveNetworkInfo();
-    return ni != null && ni.isConnected();
-  }
 
   private boolean get_isConnected() {
     return this._isConnected.get();

@@ -1,15 +1,17 @@
-package com.esri.apl.signalstrengthlogger.data;
+package com.esri.apl.signalstrengthlogger.util;
 
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.net.ConnectivityManager;
 import android.support.annotation.WorkerThread;
 import android.text.TextUtils;
 import android.util.Log;
 
 import com.esri.apl.signalstrengthlogger.R;
+import com.esri.apl.signalstrengthlogger.data.TokenInfo;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -275,5 +277,37 @@ public class DBUtils {
       Log.e(TAG, "getIntFromStringPref", e);
     }
     return val;
+  }
+
+  /**
+   * @return MIN_VALUE if N/A or couldn't complete; 0 if no updates available; >0 if updates completed
+   */
+  @WorkerThread
+  public static long doSyncRecords(Context ctx, SQLiteDatabase writableDb, SharedPreferences prefs,
+                                   ConnectivityManager connMgr) throws Exception {
+    // Don't even try if disconnected or there's nothing to sync
+    if (!NetUtils.isConnectedToNetwork(connMgr))
+      throw new Exception("Disconnected from the internet");
+
+    Cursor curUnposted = DBUtils.getUnpostedRecords(writableDb, ctx);
+    if (curUnposted.getCount() <= 0) return 0;
+
+    // Post adds
+    List<Long> recIdsSuccessfullyPosted;
+    try {
+      recIdsSuccessfullyPosted = DBUtils.postUnpostedRecords(curUnposted, ctx, prefs);
+    } catch (IOException e) {
+      throw e;
+    } catch (JSONException e) {
+      throw new Exception("Error parsing add results", e);
+    } finally {
+      curUnposted.close();
+    }
+
+
+    // Update Sqlite to mark the records as posted
+    DBUtils.updateNewlySentRecordsAsPosted(writableDb, ctx, recIdsSuccessfullyPosted);
+    long unposted = DBUtils.getUnpostedRecordsCount(writableDb, ctx);
+    return unposted;
   }
 }

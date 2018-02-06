@@ -12,13 +12,13 @@ public class TokenInfo {
   private long _expirationEpoch;
   private boolean _mustUseSSL;
 
-  TokenInfo(String token, long expiration, boolean mustUseSSL) {
+  public TokenInfo(String token, long expiration, boolean mustUseSSL) {
     set_token(token);
     set_expirationEpoch(expiration);
     set_mustUseSSL(mustUseSSL);
   }
 
-  TokenInfo(JSONObject resp) {
+  public TokenInfo(JSONObject resp) {
     try {
       set_token(resp.getString("token"));
     } catch (JSONException e) {

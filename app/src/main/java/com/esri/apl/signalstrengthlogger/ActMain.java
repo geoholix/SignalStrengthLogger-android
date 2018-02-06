@@ -9,12 +9,13 @@ import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -40,14 +41,16 @@ public class ActMain extends AppCompatActivity {
   private LineChart mSignalChart;
   private View mLytSignalChart;
   private TextView mLblUnsyncedRecords;
+  private Button mBtnSyncNow;
 
   private SQLiteDatabase mDb;
   private ConnectivityManager mConnMgr;
-  SharedPreferences mSharedPrefs;
+  private SharedPreferences mSharedPrefs;
 
 
   private long _unsyncedRecordCount = 0;
   private boolean _isInternetConnected;
+  private boolean _isLogging;
 
   @Override
   protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -56,7 +59,14 @@ public class ActMain extends AppCompatActivity {
 
     setContentView(R.layout.act_main);
 
+    mLblUnsyncedRecords = (TextView)findViewById(R.id.lblUnsyncedRecords);
+    mBtnSyncNow = (Button) findViewById(R.id.btnSyncNow);
+    mLytSignalChart = findViewById(R.id.lytSignalChart);
+
     mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+    mSharedPrefs.registerOnSharedPreferenceChangeListener(mPrefsChangeListener);
+    set_isLogging(mSharedPrefs.getBoolean(getString(R.string.pref_key_logging_enabled), false));
+
     mConnMgr = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
 
     // Create the SQLite database if needed
@@ -68,12 +78,12 @@ public class ActMain extends AppCompatActivity {
       }
     })).start();
 
-    mLblUnsyncedRecords = (TextView)findViewById(R.id.lblUnsyncedRecords);
-
-/*    mBtnSyncNow = (Button)findViewById(R.id.btnSyncNow);
-    mBtnSyncNow.setOnClickListener(onSyncNowClick);*/
-
-    mLytSignalChart = findViewById(R.id.lytSignalChart);
+    mBtnSyncNow.setOnClickListener(new View.OnClickListener() {
+      @Override
+      public void onClick(View view) {
+        doSyncNow();
+      }
+    });
 
     // Chart initialization
     mSignalChart = (LineChart)findViewById(R.id.signalChart);
@@ -173,42 +183,62 @@ public class ActMain extends AppCompatActivity {
     }
   };
 
+  public long get_unsyncedRecordCount() {
+    return _unsyncedRecordCount;
+  }
   public void set_unsyncedRecordCount(long unsyncedRecordCount) {
     this._unsyncedRecordCount = unsyncedRecordCount;
     String sUnsyncedRecords = getString(R.string.notif_unsynced_records, unsyncedRecordCount);
     runOnUiThread(new Runnable() {
       @Override
       public void run() {
+        mLytSignalChart.setVisibility(View.VISIBLE);
         mLblUnsyncedRecords.setText(sUnsyncedRecords);
       }
     });
+    setSyncButtonEnabled();
     doSyncIfNeeded();
   }
-
-  public long get_unsyncedRecordCount() {
-    return _unsyncedRecordCount;
-  }
-
   public boolean get_isInternetConnected() {
     return _isInternetConnected;
   }
-
   public void set_isInternetConnected(boolean isInternetConnected) {
     this._isInternetConnected = isInternetConnected;
     doSyncIfNeeded();
+    setSyncButtonEnabled();
   }
-
   private boolean get_isLogging() {
-    return mSharedPrefs.getBoolean(getString(R.string.pref_key_logging_enabled), false);
+    return _isLogging;
+  }
+  public void set_isLogging(boolean isLogging) {
+    this._isLogging = isLogging;
+    setSyncButtonEnabled();
   }
 
-  private void doSyncIfNeeded() {
+  public boolean get_isSyncNeeded() {
     boolean bNeedToSync = get_unsyncedRecordCount() > 0
         && get_isInternetConnected()
         && !get_isLogging();
-    if (bNeedToSync) doSyncNow();
+    return bNeedToSync;
+  }
 
-    Log.d(TAG, "Need to sync: " + Boolean.toString(bNeedToSync));
+  private void doSyncIfNeeded() {
+    // Enable sync button
+    // *Try* to sync, knowing that circumstances outside the three variables we're tracking
+    // may prevent it until later (most notably if username/pw are incorrect against a
+    // secured service)
+    if (get_isSyncNeeded()) doSyncNow();
+
+    Log.d(TAG, "Need to sync: " + Boolean.toString(get_isSyncNeeded()));
+  }
+
+  private void setSyncButtonEnabled() {
+    runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        mBtnSyncNow.setEnabled(get_isSyncNeeded());
+      }
+    });
   }
 
   private BroadcastReceiver mChartDataReceiver = new BroadcastReceiver() {
@@ -235,8 +265,6 @@ public class ActMain extends AppCompatActivity {
       mSignalChart.setData(data);
       mSignalChart.getLegend().setEnabled(false);
       mSignalChart.invalidate();
-
-      mLytSignalChart.setVisibility(View.VISIBLE);
     }
   };
   private BroadcastReceiver mUnsyncedCountReceiver = new BroadcastReceiver() {
@@ -247,4 +275,12 @@ public class ActMain extends AppCompatActivity {
       set_unsyncedRecordCount(unsyncedCount);
     }
   };
+  private SharedPreferences.OnSharedPreferenceChangeListener mPrefsChangeListener =
+      new SharedPreferences.OnSharedPreferenceChangeListener() {
+        @Override
+        public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
+          if (s.equals(getString(R.string.pref_key_logging_enabled)))
+            set_isLogging(sharedPreferences.getBoolean(s, false));
+        }
+      };
 }

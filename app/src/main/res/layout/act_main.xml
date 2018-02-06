@@ -13,10 +13,10 @@
         android:orientation="vertical"
         >
         <fragment
+            android:id="@+id/fragPrefs"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:name="com.esri.apl.signalstrengthlogger.FrgPrefs"
-            android:id="@+id/fragPrefs"/>
+            android:name="com.esri.apl.signalstrengthlogger.FrgPrefs"/>
     </LinearLayout>
 
     <View
@@ -37,17 +37,32 @@
             android:id="@+id/signalChart"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            app:layout_constraintBottom_toTopOf="@+id/lblUnsyncedRecords"
+            app:layout_constraintBottom_toTopOf="@+id/lytUnsyncedRecords"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_weight="1"/>
 
-        <TextView
-            android:id="@+id/lblUnsyncedRecords"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:id="@+id/lytUnsyncedRecords"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
+            android:orientation="horizontal"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/signalChart"
-            />
+            >
+
+            <TextView
+                android:id="@+id/lblUnsyncedRecords"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                />
+
+            <Button
+                android:id="@+id/btnSyncNow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sync Now"
+                android:enabled="false"/>
+        </LinearLayout>
     </android.support.constraint.ConstraintLayout>
 </LinearLayout>

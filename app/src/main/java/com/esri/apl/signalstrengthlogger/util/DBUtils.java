@@ -69,7 +69,6 @@ public class DBUtils {
     return json;
   }
 
-  /** Meant to be called from a worker thread **/
   public static void deletePreviouslyPostedRecords(SQLiteDatabase db, Context ctx) {
     String where = ctx.getString(R.string.whereclause_posted_records,
         ctx.getString(R.string.columnname_was_added_to_fc));
@@ -77,7 +76,6 @@ public class DBUtils {
     db.delete(table, where, null);
   }
 
-  /** Meant to be called from a worker thread **/
   public static Cursor getUnpostedRecords(SQLiteDatabase db, Context ctx) {
     String table = ctx.getString(R.string.viewname_unposted_records);
     return db.query(
@@ -85,13 +83,12 @@ public class DBUtils {
         null, null, null);
   }
 
-  /** Meant to be called from a worker thread
+  /**
    * @param cur SQLite DB cursor to list of unposted records
    * @param ctx Service context
    * @param sharedPrefs Shared preferences
    * @return list of rowids of records that were successfully posted
    * **/
-  @WorkerThread
   public static List<Long> postUnpostedRecords(
       Cursor cur, Context ctx, SharedPreferences sharedPrefs)
       throws IOException, JSONException {

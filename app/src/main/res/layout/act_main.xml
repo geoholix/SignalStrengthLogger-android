@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:orientation="vertical"
-              android:id="@+id/lytMain"
-              android:layout_width="match_parent"
-              android:layout_height="wrap_content"
-              android:animateLayoutChanges="true">
+                                             xmlns:app="http://schemas.android.com/apk/res-auto"
+                                             android:orientation="vertical"
+                                             android:id="@+id/lytMain"
+                                             android:layout_width="match_parent"
+                                             android:layout_height="wrap_content"
+                                             android:animateLayoutChanges="true">
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="3">
+        android:layout_weight="2"
+        android:orientation="vertical"
+        >
         <fragment
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -16,29 +19,35 @@
             android:id="@+id/fragPrefs"/>
     </LinearLayout>
 
-    <LinearLayout
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:foreground="@android:color/black"/>
+
+    <android.support.constraint.ConstraintLayout
         android:id="@+id/lytSignalChart"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_margin="8dp"
         android:layout_weight="2"
-        android:visibility="gone"
-        android:orientation="vertical">
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:foreground="@android:color/black"/>
+        android:layout_gravity="center_horizontal"
+        android:visibility="gone">
 
         <com.github.mikephil.charting.charts.LineChart
             android:id="@+id/signalChart"
             android:layout_width="match_parent"
-            android:layout_weight="1"
-            android:layout_height="0dp"/>
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toTopOf="@+id/lblUnsyncedRecords"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_weight="1"/>
 
-        <Button
-            android:id="@+id/btnSyncNow"
+        <TextView
+            android:id="@+id/lblUnsyncedRecords"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="right"
-            android:text="Sync Now"/>
-    </LinearLayout>
+            android:gravity="center_vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/signalChart"
+            />
+    </android.support.constraint.ConstraintLayout>
 </LinearLayout>

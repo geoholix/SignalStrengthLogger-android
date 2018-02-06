@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.location.Location;
@@ -21,6 +22,7 @@ import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.CellInfoLte;
@@ -29,6 +31,7 @@ import android.telephony.CellSignalStrengthGsm;
 import android.telephony.CellSignalStrengthLte;
 import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.esri.apl.signalstrengthlogger.data.DBHelper;
@@ -58,6 +61,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class SvcLocationLogger extends Service {
   private static final int SVC_NOTIF_ID = 1;
   private static final int SYNC_ERR_NOTIF_ID = 2;
+  private static final int DB_ERR_NOTIF_ID = 3;
   private static final int ACT_PI_REQ_CODE = 1;
   private static final String TAG = "SvcLocationLogger";
   private static final int MS_PER_S = 1000;
@@ -166,18 +170,16 @@ public class SvcLocationLogger extends Service {
     Notification notification = buildSvcForegroundNotification(null);
     startForeground(SVC_NOTIF_ID, notification);
 
+    // Doc says this call needs to be called from a worker thread since upgrading can be lengthy;
+    // however, we know that the main form called this earlier, so we should be okay
     if (mDb == null || !mDb.isOpen()) {
       SQLiteOpenHelper dbhlp = new DBHelper(this);
       mDb = dbhlp.getWritableDatabase();
     }
 
-    // Delete previously posted records from local database
-    new Thread(new Runnable() {
-      @Override
-      public void run() {
-        DBUtils.deletePreviouslyPostedRecords(mDb, SvcLocationLogger.this);
-      }
-    }).start();
+    long unposted = DBUtils.getUnpostedRecordsCount(mDb, SvcLocationLogger.this);
+    set_unsyncedRecordCount(unposted);
+    DBUtils.deletePreviouslyPostedRecords(mDb, SvcLocationLogger.this);
 
     // Get initial connectivity status
     set_isConnected(NetUtils.isConnectedToNetwork(mConnectivityManager));
@@ -291,29 +293,39 @@ public class SvcLocationLogger extends Service {
             vals.put(getString(R.string.columnname_deviceid), mDeviceId);
             vals.put(getString(R.string.columnname_carrierid), mCellCarrierName);
 
-            mDb.insert(getString(R.string.tablename_readings), null, vals);
-            set_unsyncedRecordCount(get_unsyncedRecordCount() + 1);
+            try {
+              mDb.insertOrThrow(getString(R.string.tablename_readings), null, vals);
 
-            // Save to chart data
-            ReadingDataPoint rdp = new ReadingDataPoint(
-                signalStrength, loc.getTime(), x, y, z, mOsName, mOsVersion,
-                mPhoneModel, mDeviceId, mCellCarrierName);
-            mChartData.add(rdp);
-            int overflow = mChartData.size() - MAX_CHART_DATA_POINTS;
-            while (overflow-- > 0) {
-              mChartData.remove(0);
+              set_unsyncedRecordCount(get_unsyncedRecordCount() + 1);
+
+              // Save to chart data
+              ReadingDataPoint rdp = new ReadingDataPoint(
+                  signalStrength, loc.getTime(), x, y, z, mOsName, mOsVersion,
+                  mPhoneModel, mDeviceId, mCellCarrierName);
+              mChartData.add(rdp);
+              int overflow = mChartData.size() - MAX_CHART_DATA_POINTS;
+              while (overflow-- > 0) {
+                mChartData.remove(0);
+              }
+              Intent intent = new Intent();
+              intent.setAction(getString(R.string.intent_category_chart_data_available));
+              intent.putParcelableArrayListExtra(getString(R.string.extra_chart_data_list), mChartData);
+              // Send only to local process
+              LocalBroadcastManager.getInstance(SvcLocationLogger.this).sendBroadcast(intent);
+              Log.d(TAG, "Sent chart data broadcast");
+            } catch (SQLException e){
+              String sErrMsg = (e.getCause() == null)
+                  ? e.getLocalizedMessage()
+                  : TextUtils.join("; ", new String[]{
+                        e.getLocalizedMessage(), e.getCause().getLocalizedMessage()});
+              showErrorNotification(DB_ERR_NOTIF_ID, sErrMsg);
+              Log.e(TAG, "Error inserting reading", e);
             }
-            Intent intent = new Intent();
-            intent.setAction(getString(R.string.intent_category_chart_data_available));
-            intent.putParcelableArrayListExtra(getString(R.string.extra_chart_data_list), mChartData);
-            sendBroadcast(intent);
-            Log.d(TAG, "Sent chart data broadcast");
           }
         }
       }).start();
     }
   };
-
 
 
   /** Signal strength value
@@ -375,15 +387,7 @@ public class SvcLocationLogger extends Service {
           String msg = e.getLocalizedMessage();
           if (e.getCause() != null)
             msg += ":\n" + e.getCause().getLocalizedMessage();
-          Notification notification = new NotificationCompat.Builder(ctx, null)
-              .setContentTitle(getString(R.string.title_err_synchronization))
-              .setStyle(new NotificationCompat.BigTextStyle()
-                        .bigText(getString(R.string.msg_err_synchronization, msg)))
-              .setSmallIcon(android.R.drawable.stat_sys_warning)
-              .setGroup(getString(R.string.group_err_synchronization))
-              .build();
-          NotificationManagerCompat.from(ctx)
-              .notify(SYNC_ERR_NOTIF_ID, notification);
+          showErrorNotification(SYNC_ERR_NOTIF_ID, msg);
         }
       }
     });
@@ -395,6 +399,19 @@ public class SvcLocationLogger extends Service {
     public void run() {
       syncRecordsToFCNow();
     }
+  }
+
+  private void showErrorNotification(int notifId, String errText) {
+    Context ctx = this;
+    Notification notification = new NotificationCompat.Builder(ctx, null)
+        .setContentTitle(getString(R.string.title_err_synchronization))
+        .setStyle(new NotificationCompat.BigTextStyle()
+            .bigText(getString(R.string.msg_err_synchronization, errText)))
+        .setSmallIcon(android.R.drawable.stat_sys_warning)
+        .setGroup(getString(R.string.group_err_synchronization))
+        .build();
+    NotificationManagerCompat.from(ctx)
+        .notify(notifId, notification);
   }
 
   BroadcastReceiver mConnectivityStatusReceiver = new BroadcastReceiver() {
@@ -424,10 +441,17 @@ public class SvcLocationLogger extends Service {
 
   public void set_unsyncedRecordCount(long unsyncedRecordCount) {
     Log.d(TAG, "set_unsyncedRecordCount => " + unsyncedRecordCount);
+    this._unsyncedRecordCount.set(unsyncedRecordCount);
+
     if (this._unsyncedRecordCount.get() == 0 || this._unsyncedRecordCount.get() % 5 == 0)
       updateSvcNotificationText(
           getString(R.string.notif_unsynced_records, this._unsyncedRecordCount.get()));
 
-    this._unsyncedRecordCount.set(unsyncedRecordCount);
+    // Broadcast record count to activity
+    Intent intent = new Intent();
+    intent.setAction(getString(R.string.intent_category_unsynced_count));
+    intent.putExtra(getString(R.string.extra_unsynced_count), get_unsyncedRecordCount());
+    // Send only to local process
+    LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
   }
 }

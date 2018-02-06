@@ -84,6 +84,17 @@
             android:singleLine="true"
             android:maxLines="1" />
 
+    <EditTextPreference
+        android:key="@string/pref_key_token_url"
+        android:dependency="@string/pref_key_logging_enabled"
+        android:title="@string/pref_title_token_url"
+        android:defaultValue="@string/pref_default_token_url"
+        android:selectAllOnFocus="true"
+        android:inputType="textUri"
+        android:capitalize="none"
+        android:singleLine="false"
+        android:maxLines="1" />
+
         <Preference
             android:key="@string/pref_key_device_id"
             android:dependency="@string/pref_key_logging_enabled"

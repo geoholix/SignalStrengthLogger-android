@@ -146,6 +146,8 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
     bindPreferenceSummaryToValue(findPreference(
         getString(R.string.pref_key_user_pw)));
     bindPreferenceSummaryToValue(findPreference(
+        getString(R.string.pref_key_token_url)));
+    bindPreferenceSummaryToValue(findPreference(
         getString(R.string.pref_key_tracking_displacement)));
     bindPreferenceSummaryToValue(findPreference(
             getString(R.string.pref_key_tracking_interval)));

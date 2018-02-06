@@ -188,7 +188,8 @@ public class DBUtils {
 
       int iDurationMins = ctx.getResources().getInteger(R.integer.agol_token_max_expiration);
       String referer = ctx.getString(R.string.agol_request_referer);
-      String svcUrl = ctx.getString(R.string.agol_token_url);
+      String svcUrl = prefs.getString(ctx.getString(R.string.pref_key_token_url),
+          ctx.getString(R.string.pref_default_token_url));
       String userId = prefs.getString(ctx.getString(R.string.pref_key_user_id), "");
       String password = prefs.getString(ctx.getString(R.string.pref_key_user_pw), "");
 

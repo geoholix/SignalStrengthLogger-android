@@ -13,6 +13,10 @@
     <string name="pref_title_feat_svc_url">Feature Service URL</string>
     <string name="pref_default_feat_svc_url">https://services.arcgis.com/W6FrZiZ4flx7mLJe/arcgis/rest/services/SignalReadings_secure/FeatureServer/0/addFeatures</string>
 
+    <string name="pref_key_token_url">token_generator_url</string>
+    <string name="pref_title_token_url">Token Generator Service URL</string>
+    <string name="pref_default_token_url">https://www.arcgis.com/sharing/generateToken</string>
+
     <string name="pref_key_user_id">user_id</string>
     <string name="pref_title_user_id">User ID</string>
     <string name="pref_default_user_id"></string>

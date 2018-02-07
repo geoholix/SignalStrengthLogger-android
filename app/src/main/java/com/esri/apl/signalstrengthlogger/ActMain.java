@@ -192,7 +192,6 @@ public class ActMain extends AppCompatActivity {
     runOnUiThread(new Runnable() {
       @Override
       public void run() {
-        mLytSignalChart.setVisibility(View.VISIBLE);
         mLblUnsyncedRecords.setText(sUnsyncedRecords);
       }
     });
@@ -248,23 +247,26 @@ public class ActMain extends AppCompatActivity {
           intent.getParcelableArrayListExtra(getString(R.string.extra_chart_data_list));
       Log.d(TAG, "onReceive chart data");
 
-      // Update chart
-      List<Entry> chartEntries = new ArrayList<>();
-      for (int i = 0; i < chartData.size(); i++) {
-        chartEntries.add(new Entry(i, chartData.get(i).get_signalStrength()));
+      if (chartData != null && chartData.size() > 0) {
+        mLytSignalChart.setVisibility(View.VISIBLE);
+        // Update chart
+        List<Entry> chartEntries = new ArrayList<>();
+        for (int i = 0; i < chartData.size(); i++) {
+          chartEntries.add(new Entry(i, chartData.get(i).get_signalStrength()));
+        }
+        LineDataSet dataset = new LineDataSet(chartEntries, "Readings");
+        dataset.setMode(LineDataSet.Mode.STEPPED);
+        dataset.setCircleColor(Color.BLACK);
+        dataset.setColor(Color.BLACK);
+        dataset.setDrawValues(false);
+        dataset.setFillColor(Color.DKGRAY);
+        dataset.setFillAlpha(85);
+        dataset.setDrawFilled(true);
+        LineData data = new LineData(dataset);
+        mSignalChart.setData(data);
+        mSignalChart.getLegend().setEnabled(false);
+        mSignalChart.invalidate();
       }
-      LineDataSet dataset = new LineDataSet(chartEntries, "Readings");
-      dataset.setMode(LineDataSet.Mode.STEPPED);
-      dataset.setCircleColor(Color.BLACK);
-      dataset.setColor(Color.BLACK);
-      dataset.setDrawValues(false);
-      dataset.setFillColor(Color.DKGRAY);
-      dataset.setFillAlpha(85);
-      dataset.setDrawFilled(true);
-      LineData data = new LineData(dataset);
-      mSignalChart.setData(data);
-      mSignalChart.getLegend().setEnabled(false);
-      mSignalChart.invalidate();
     }
   };
   private BroadcastReceiver mUnsyncedCountReceiver = new BroadcastReceiver() {

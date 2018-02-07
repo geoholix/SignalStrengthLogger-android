@@ -364,6 +364,12 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
       if (pref == null) return;
 
       pref.setChecked(sharedPreferences.getBoolean(s, false));
+    } else if (s.equals(getString(R.string.pref_key_user_id))
+               || s.equals(getString(R.string.pref_key_user_pw))) { // Clear saved token info
+      SharedPreferences.Editor editor = sharedPreferences.edit();
+      editor.remove(getString(R.string.pref_key_agol_token));
+      editor.remove(getString(R.string.pref_key_agol_token_expiration_epoch));
+      editor.apply();
     }
   }
 }

@@ -113,8 +113,7 @@ public class DBUtils {
 
     // If user id specified, try to get a token to use
     TokenInfo tokenInfo = null;
-    boolean bUserIdSpecified = !TextUtils
-        .isEmpty(sharedPrefs.getString(ctx.getString(R.string.pref_key_user_id), null));
+    boolean bUserIdSpecified = !TextUtils.isEmpty(sharedPrefs.getString(ctx.getString(R.string.pref_key_user_id), null));
     if (bUserIdSpecified) tokenInfo = getAGOLToken(ctx, sharedPrefs);
 
     // Post via REST
@@ -183,7 +182,7 @@ public class DBUtils {
     TokenInfo tokenInfo;
 
     if (TextUtils.isEmpty(token) || expiration < now + ONEHALFHOUR_MILLIS) { // Get a new token
-
+      Log.d(TAG, "Getting new token");
       OkHttpClient http = new OkHttpClient();
 
       int iDurationMins = ctx.getResources().getInteger(R.integer.agol_token_max_expiration);

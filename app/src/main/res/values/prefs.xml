@@ -49,4 +49,6 @@
     <string name="pref_key_agol_token">agol_token</string>
     <string name="pref_key_agol_token_expiration_epoch">agol_token_expiration</string>
     <string name="pref_key_agol_ssl">agol_token_must_use_ssl</string>
+
+    <string name="pref_key_last_modified_datetime">prefs_last_modified_datetime</string>
 </resources>

@@ -1,6 +1,7 @@
 package com.esri.apl.signalstrengthlogger;
 
 import android.Manifest;
+import android.app.backup.BackupManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -22,6 +23,7 @@ import android.view.Gravity;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -174,6 +176,21 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
       new Preference.OnPreferenceChangeListener() {
         @Override
         public boolean onPreferenceChange(Preference preference, Object value) {
+          // Request backup?
+          if (Arrays.asList(
+              getString(R.string.pref_key_tracking_displacement),
+              getString(R.string.pref_key_tracking_interval),
+              getString(R.string.pref_key_sync_interval),
+              getString(R.string.pref_key_feat_svc_url),
+              getString(R.string.pref_key_token_url),
+              getString(R.string.pref_key_device_id)
+          ).contains(preference.getKey())) {
+            Log.d(TAG, "Backup requested");
+            mSharedPrefs.edit().putLong(getString(R.string.pref_key_last_modified_datetime),
+                System.currentTimeMillis()).apply();
+            new BackupManager(getContext()).dataChanged();
+          }
+
           String stringValue = TextUtils.isEmpty(String.valueOf(value))
               ? "<Unspecified>" : String.valueOf(value);
 
@@ -255,6 +272,7 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
             // simple string representation.
             preference.setSummary(stringValue);
           }
+
           return true;
         }
         private boolean validateInterval(Preference preference,

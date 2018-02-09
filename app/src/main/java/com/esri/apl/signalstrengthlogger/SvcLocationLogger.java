@@ -333,7 +333,6 @@ public class SvcLocationLogger extends Service {
    *  before this service was started.
    * @return 0 through 4 (0 even if signal missing or invalid)
    */
-  // TODO Detect and handle transition to/from airplane mode
   private int getCellSignalStrength() {
     int strength = Integer.MIN_VALUE;
     List<CellInfo> cellInfos = mTelMgr.getAllCellInfo();   //This will give info of all sims present inside your mobile

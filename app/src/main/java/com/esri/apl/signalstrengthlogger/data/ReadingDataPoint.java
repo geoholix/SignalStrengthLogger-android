@@ -4,9 +4,9 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 /**
- * Created by mark4238 on 2/1/2018.
+ * Class representing a single signal strength reading.
+ * Parcelable for sending to an activity for charting.
  */
-
 public class ReadingDataPoint implements Parcelable {
   private float _signalStrength;
   private long _datetime;

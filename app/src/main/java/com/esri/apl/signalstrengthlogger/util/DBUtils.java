@@ -89,6 +89,7 @@ public class DBUtils {
    * @param sharedPrefs Shared preferences
    * @return list of rowids of records that were successfully posted
    * **/
+  @WorkerThread
   public static List<Long> postUnpostedRecords(
       Cursor cur, Context ctx, SharedPreferences sharedPrefs)
       throws IOException, JSONException {
@@ -173,7 +174,6 @@ public class DBUtils {
    */
   @WorkerThread
   public static TokenInfo getAGOLToken(Context ctx, SharedPreferences prefs) throws IOException, JSONException {
-    long now = System.currentTimeMillis();
     // If it takes longer than a half hour to do one sync, we've got bigger problems...
     final long ONEHALFHOUR_MILLIS = 30 * 60 * 1000;
     String token = prefs.getString(ctx.getString(R.string.pref_key_agol_token), null);
@@ -181,6 +181,7 @@ public class DBUtils {
     boolean mustUseSSL = prefs.getBoolean(ctx.getString(R.string.pref_key_agol_ssl), true);
     TokenInfo tokenInfo;
 
+    long now = System.currentTimeMillis();
     if (TextUtils.isEmpty(token) || expiration < now + ONEHALFHOUR_MILLIS) { // Get a new token
       Log.d(TAG, "Getting new token");
       OkHttpClient http = new OkHttpClient();
@@ -277,7 +278,7 @@ public class DBUtils {
   }
 
   /**
-   * @return MIN_VALUE if N/A or couldn't complete; 0 if no updates available; >0 if updates completed
+   * @return 0 if no updates available; >0 if updates completed
    */
   @WorkerThread
   public static long doSyncRecords(Context ctx, SQLiteDatabase writableDb, SharedPreferences prefs,

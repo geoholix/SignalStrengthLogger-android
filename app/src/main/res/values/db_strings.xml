@@ -45,7 +45,5 @@
             WHERE %3$s = 0
     </string>
     <string name="whereclause_unposted_records">%1$s = 0</string>
-<!--    <string name="fieldlist_unposted_records">
-        x,y,z,signal_strength,date,os_name,os_version,phone_model,device_id,is_posted,rowid</string>-->
     <string name="whereclause_posted_records">%1$s = 1</string>
 </resources>

@@ -402,7 +402,7 @@ public class SvcLocationLogger extends Service {
 
   private void showErrorNotification(int notifId, String errText) {
     Context ctx = this;
-    Notification notification = new NotificationCompat.Builder(ctx, null)
+    Notification notification = new NotificationCompat.Builder(ctx)
         .setContentTitle(getString(R.string.title_err_synchronization))
         .setStyle(new NotificationCompat.BigTextStyle()
             .bigText(getString(R.string.msg_err_synchronization, errText)))

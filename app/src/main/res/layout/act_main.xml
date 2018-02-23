@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
                                              xmlns:app="http://schemas.android.com/apk/res-auto"
-                                             android:orientation="vertical"
+              xmlns:tools="http://schemas.android.com/tools"
+              android:orientation="vertical"
                                              android:id="@+id/lytMain"
                                              android:layout_width="match_parent"
                                              android:layout_height="wrap_content"
@@ -16,7 +17,8 @@
             android:id="@+id/fragPrefs"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:name="com.esri.apl.signalstrengthlogger.FrgPrefs"/>
+            android:name="com.esri.apl.signalstrengthlogger.FrgPrefs"
+            tools:layout="@layout/preference_material"/>
     </LinearLayout>
 
     <View
@@ -28,9 +30,9 @@
         android:id="@+id/lytSignalChart"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_gravity="center_horizontal"
         android:layout_margin="8dp"
         android:layout_weight="2"
-        android:layout_gravity="center_horizontal"
         android:visibility="gone">
 
         <com.github.mikephil.charting.charts.LineChart
@@ -53,16 +55,16 @@
             <TextView
                 android:id="@+id/lblUnsyncedRecords"
                 android:layout_width="0dp"
-                android:layout_weight="1"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 />
 
             <Button
                 android:id="@+id/btnSyncNow"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Sync Now"
-                android:enabled="false"/>
+                android:enabled="false"
+                android:text="Sync Now"/>
         </LinearLayout>
     </android.support.constraint.ConstraintLayout>
 </LinearLayout>

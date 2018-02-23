@@ -60,7 +60,7 @@ public class ActMain extends AppCompatActivity {
     setContentView(R.layout.act_main);
 
     mLblUnsyncedRecords = (TextView)findViewById(R.id.lblUnsyncedRecords);
-    mBtnSyncNow = (Button) findViewById(R.id.btnSyncNow);
+    mBtnSyncNow = (Button)findViewById(R.id.btnSyncNow);
     mLytSignalChart = findViewById(R.id.lytSignalChart);
 
     mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);

@@ -105,7 +105,6 @@ public class SvcLocationLogger extends Service {
     Log.d(TAG, "onDestroy");
   }
 
-  // onCreate() -> onStartCommand() -> startLogging()
   @Override
   public void onCreate() {
     super.onCreate();
@@ -127,16 +126,14 @@ public class SvcLocationLogger extends Service {
 
     MAX_CHART_DATA_POINTS = getResources().getInteger(R.integer.max_chart_data_points);
 
+    startLogging();
+
     Log.d(TAG, "onCreate");
   }
 
-  @Override
-  public int onStartCommand(Intent intent, int flags, int startId) {
-    startLogging();
-    Log.d(TAG, "onStartCommand");
-    return super.onStartCommand(intent, flags, startId);
-  }
-
+  /** Show a non-dismissible notification while the service is running.
+   * Make it launch the main activity if the user taps it; this lets them make changes
+   * or stop logging. */
   private Notification buildSvcForegroundNotification(String notText) {
     // Create notification and bring to foreground
     Intent intent = new Intent(this, ActMain.class);
@@ -221,6 +218,8 @@ public class SvcLocationLogger extends Service {
     Log.d(TAG, "startLogging");
   }
 
+  /** Called when user has opted to stop logging and the main app has stopped the service.
+   * Called from onDestroy() */
   private void stopLogging() {
     // Stop synchronizing on a timer
     mSyncTimer.cancel();
@@ -239,9 +238,10 @@ public class SvcLocationLogger extends Service {
           .putBoolean(getString(R.string.pref_key_logging_enabled), false)
           .apply();
 
-    // Close database resources
-    // TODO Find a way to do the final sync without waiting here
+    // Close database resources; unfortunately, syncing is done on a worker thread, and we
+    // don't want to close the database before syncing finishes
     try {
+      // TODO Find a way to do the final sync without waiting here
       syncThread.join();
 
       if (mDb != null && mDb.isOpen()) {
@@ -254,18 +254,16 @@ public class SvcLocationLogger extends Service {
       Log.e(TAG, "Error waiting for sync thread", e);
     }
 
-    // Stop the service since it's no longer needed
-//    stopForeground(true);
+    // Clear the persistent logger notification
     NotificationManagerCompat.from(this).cancel(SVC_NOTIF_ID);
 
     Log.d(TAG, "stopLogging");
   }
 
-
+  /** Here's where logging is done: when a location update is received. */
   private LocationCallback mLocationListener = new LocationCallback() {
     @Override
     public void onLocationResult(final LocationResult locationResult) {
-//      Log.d(TAG, "onLocationResults");
 
       new Thread(new Runnable() {
         @Override
@@ -331,6 +329,8 @@ public class SvcLocationLogger extends Service {
   /** Signal strength value
    *  Note: Suppress missing permission error, as this check was done in the main activity
    *  before this service was started.
+   *  We could have logged a more granular cell signal level, but iOS can only log 0-4, and we need
+   *  parity in the database.
    * @return 0 through 4 (0 even if signal missing or invalid)
    */
   private int getCellSignalStrength() {
@@ -400,6 +400,7 @@ public class SvcLocationLogger extends Service {
     }
   }
 
+  /** The main activity might be gone from memory. The only UI a service has is notifications. */
   private void showErrorNotification(int notifId, String errText) {
     Context ctx = this;
     Notification notification = new NotificationCompat.Builder(ctx)
@@ -413,6 +414,7 @@ public class SvcLocationLogger extends Service {
         .notify(notifId, notification);
   }
 
+  /** Listen to internet connectivity in order to sync */
   BroadcastReceiver mConnectivityStatusReceiver = new BroadcastReceiver() {
     @Override
     public void onReceive(Context context, Intent intent) {

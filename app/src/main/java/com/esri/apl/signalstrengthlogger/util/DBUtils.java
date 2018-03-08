@@ -27,9 +27,11 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+/** Utilities for working with a local SQLite database to cache location points */
 public class DBUtils {
   private static final String TAG = "DBUtils";
 
+  // Methods that help create the JSON for adding a feature to the REST based Feature Service
   private static String formatParamForJSON(int param) {
     if (param == Integer.MIN_VALUE) return "null";
     else return String.format("%d", param);
@@ -69,6 +71,12 @@ public class DBUtils {
     return json;
   }
 
+  /** After features are sent to the Feature Service, they're flagged in the lcoal DB as posted
+   * but left in place until the next logging session, just in case they need to be extracted.
+   * In the next logging session, this method is called to purge old local records.
+   * @param db The SQLite database (previously opened for read/write)
+   * @param ctx The caller's context
+   */
   public static void deletePreviouslyPostedRecords(SQLiteDatabase db, Context ctx) {
     String where = ctx.getString(R.string.whereclause_posted_records,
         ctx.getString(R.string.columnname_was_added_to_fc));
@@ -76,6 +84,11 @@ public class DBUtils {
     db.delete(table, where, null);
   }
 
+  /** Determines how many local database records haven't yet been posted to the Feature Service.
+   * @param db The SQLite database (previously opened for read/write)
+   * @param ctx The caller's context
+   * @return A SQLite cursor with the results of the query
+   */
   public static Cursor getUnpostedRecords(SQLiteDatabase db, Context ctx) {
     String table = ctx.getString(R.string.viewname_unposted_records);
     return db.query(
@@ -83,12 +96,12 @@ public class DBUtils {
         null, null, null);
   }
 
-  /**
+  /** Here's where locally cached records get posted up to the REST based Feature Service.
    * @param cur SQLite DB cursor to list of unposted records
    * @param ctx Service context
    * @param sharedPrefs Shared preferences
    * @return list of rowids of records that were successfully posted
-   * **/
+   */
   @WorkerThread
   public static List<Long> postUnpostedRecords(
       Cursor cur, Context ctx, SharedPreferences sharedPrefs)
@@ -231,8 +244,15 @@ public class DBUtils {
     return tokenInfo;
   }
 
-  /** Meant to be called from a worker thread.<p/>
-   * Assumption: successes is a valid list (even if empty) **/
+  /** Here's where newly posted records get flagged as having been posted, so they won't
+   * get posted a second time and will eventually be purged from the local database.
+   * Meant to be called from a worker thread.<p/>
+   * Assumption: successes is a valid list (even if empty)
+   * @param db The SqLite database (previously opened read/write)
+   * @param ctx The caller's context
+   * @param successes A list of unique SQLite row IDs for records that were successfully posted
+   */
+  @WorkerThread
   public static void updateNewlySentRecordsAsPosted(SQLiteDatabase db, Context ctx, List<Long> successes) {
     String table = ctx.getString(R.string.tablename_readings);
     String postStatusColumn = ctx.getString(R.string.columnname_was_added_to_fc);
@@ -245,6 +265,13 @@ public class DBUtils {
     db.update(table, postStatus, where, null);
   }
 
+  /**
+   * The number of records in the local database that still need to be posted.
+   * Primarily used for display on the main activity.
+   * @param db The local database (previously opened read/write)
+   * @param ctx The caller's context
+   * @return The number of records that still need to be posted to the Feature Service
+   */
   public static long getUnpostedRecordsCount(SQLiteDatabase db, Context ctx) {
     String table = ctx.getString(R.string.tablename_readings);
     String[] cols = new String[]{"COUNT(1)"};
@@ -278,7 +305,11 @@ public class DBUtils {
   }
 
   /**
-   * @return 0 if no updates available; >0 if updates completed
+   * @param ctx Context from caller for getting resources
+   * @param writableDb The SQLITE database containing records needing synchronization
+   * @param connMgr Connectivity manager (so we know if we're connected and can sync)
+   * @param prefs Default shared preferences for this app
+   * @return the number of records that needed synchronizing but failed for some reason (should be 0 unless an error occurred)
    */
   @WorkerThread
   public static long doSyncRecords(Context ctx, SQLiteDatabase writableDb, SharedPreferences prefs,
@@ -301,7 +332,6 @@ public class DBUtils {
     } finally {
       curUnposted.close();
     }
-
 
     // Update Sqlite to mark the records as posted
     DBUtils.updateNewlySentRecordsAsPosted(writableDb, ctx, recIdsSuccessfullyPosted);

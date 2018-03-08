@@ -65,6 +65,7 @@ public class ActMain extends AppCompatActivity {
 
     mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
     mSharedPrefs.registerOnSharedPreferenceChangeListener(mPrefsChangeListener);
+
     set_isLogging(mSharedPrefs.getBoolean(getString(R.string.pref_key_logging_enabled), false));
 
     mConnMgr = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -103,6 +104,7 @@ public class ActMain extends AppCompatActivity {
   @Override
   protected void onDestroy() {
     super.onDestroy();
+    mSharedPrefs.unregisterOnSharedPreferenceChangeListener(mPrefsChangeListener);
     mDb.close();
   }
 
@@ -277,6 +279,8 @@ public class ActMain extends AppCompatActivity {
       set_unsyncedRecordCount(unsyncedCount);
     }
   };
+
+  /** Listen to logging-switch pref so we know to enable-disable sync button */
   private SharedPreferences.OnSharedPreferenceChangeListener mPrefsChangeListener =
       new SharedPreferences.OnSharedPreferenceChangeListener() {
         @Override

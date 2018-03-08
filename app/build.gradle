@@ -3,25 +3,19 @@ apply plugin: 'io.fabric'
 
 android {
     signingConfigs {
-        config {
-            keyPassword 'benchmark'
-            storeFile file('E:/Projects/Android/apl.key')
-            storePassword 'benchmark'
-            keyAlias 'esri apl android'
-        }
     }
     compileSdkVersion 26
     defaultConfig {
         applicationId "com.esri.apl.signalstrengthlogger"
         minSdkVersion 18
         targetSdkVersion 25
-        versionCode 5
-        versionName '0.6.5'
-        signingConfig signingConfigs.config
+        versionCode 6
+        versionName '0.7.0'
     }
     buildTypes {
         release {
             minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -36,12 +30,13 @@ android {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation 'com.google.android.gms:play-services-location:11+'
+    implementation 'com.google.android.gms:play-services-location:11.8.0'
     implementation 'com.android.support.constraint:constraint-layout:1.1.0-beta5'
-    implementation 'com.android.support:design:26+'
-    implementation 'com.android.support:support-v4:26+'
-    implementation 'com.android.support:preference-v7:26+'
-    implementation 'com.takisoft.fix:preference-v7:26+'
+    //noinspection GradleCompatible
+    implementation 'com.android.support:design:26.1.0'
+    implementation 'com.android.support:support-v4:26.1.0'
+    implementation 'com.android.support:preference-v7:26.1.0'
+    implementation 'com.takisoft.fix:preference-v7:27.0.2.0'
     implementation 'com.squareup.okhttp3:okhttp:3.9.1'
     implementation 'com.github.PhilJay:MPAndroidChart:v3.0.3'
     compile('com.crashlytics.sdk.android:crashlytics:2.8.0@aar') {

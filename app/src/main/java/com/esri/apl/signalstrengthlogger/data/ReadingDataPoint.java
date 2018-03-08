@@ -5,7 +5,7 @@ import android.os.Parcelable;
 
 /**
  * Class representing a single signal strength reading.
- * Parcelable for sending to an activity for charting.
+ * Parcelable for sending from service to main activity for charting.
  */
 public class ReadingDataPoint implements Parcelable {
   private float _signalStrength;

@@ -20,8 +20,11 @@
         android:theme="@style/AppTheme"
         android:backupAgent=".util.PrefsBackup">
 
+        <!-- Please remove this or get your own, free of charge.-->
         <meta-data android:name="io.fabric.ApiKey"
                    android:value="cec60f2f791fea565986b0fc053b4fd3d5982fec"/>
+        <!-- The backup will no longer work if you change the package name above without changing the api key.
+            https://developer.android.com/google/backup/signup.html -->
         <meta-data android:name="com.google.android.backup.api_key"
                    android:value="AEdPqrEAAAAImWD6OdGLlPzZBX6NNqlhTVlY53DVqejpoFbP1A" />
         <activity

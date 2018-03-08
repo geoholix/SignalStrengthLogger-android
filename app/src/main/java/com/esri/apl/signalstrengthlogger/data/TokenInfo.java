@@ -5,6 +5,7 @@ import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+/** Information about a generated security token (if using a secure service) */
 public class TokenInfo {
   private static final String TAG = "TokenInfo";
 
@@ -40,24 +41,24 @@ public class TokenInfo {
     return _token;
   }
 
-  public void set_token(String _token) {
-    this._token = _token;
+  public void set_token(String token) {
+    this._token = token;
   }
 
   public long get_expirationEpoch() {
     return _expirationEpoch;
   }
 
-  public void set_expirationEpoch(long _expirationEpoch) {
-    this._expirationEpoch = _expirationEpoch;
+  public void set_expirationEpoch(long expirationEpoch) {
+    this._expirationEpoch = expirationEpoch;
   }
 
   public boolean get_mustUseSSL() {
     return _mustUseSSL;
   }
 
-  public void set_mustUseSSL(boolean _mustUseSSL) {
-    this._mustUseSSL = _mustUseSSL;
+  public void set_mustUseSSL(boolean mustUseSSL) {
+    this._mustUseSSL = mustUseSSL;
   }
 
 }

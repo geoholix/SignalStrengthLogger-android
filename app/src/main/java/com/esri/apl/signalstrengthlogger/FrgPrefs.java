@@ -27,7 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
+public class FrgPrefs extends PreferenceFragmentCompat {
   private final static String TAG = "FrgPrefs";
   // onPermissionsResult needs to know when the permissions request was made
   private final static int REQ_PERMISSIONS_ON_STARTUP = 1;
@@ -53,20 +53,14 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
   }
 
   @Override
-  public void onDestroyView() {
-    super.onDestroyView();
-    mSharedPrefs.unregisterOnSharedPreferenceChangeListener(this);
-  }
-
-  @Override
   public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-    setupSimplePreferencesScreen();
+    setupPreferencesScreen();
   }
 
   /**
-   *
+   * Check to see whether necessary permissions have been granted.
    * @param req_code The proper REQ_ constant defined at the top of this class
-   * @return true if all permissions have been granted; false if not
+   * @return true if all permissions have been granted; false if not or if user response is pending
    */
   private boolean checkAndRequestPermissions(int req_code) {
     List<String> permsNeeded = new ArrayList<>();
@@ -82,24 +76,9 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
     return (iPermsNeeded == 0);
   }
 
-  /**
-   * Shows the simplified settings UI if the device configuration if the
-   * device configuration dictates that a simplified, single-pane UI should be
-   * shown.
-   */
-  private void setupSimplePreferencesScreen() {
-/*        if (!isSimplePreferences(this)) {
-            return;
-        }*/
-
-    // In the simplified UI, fragments are not used at all and we instead
-    // use the older PreferenceActivity APIs.
-
+  private void setupPreferencesScreen() {
     // Compute a first-time default for device id
     mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(mCtx);
-
-    // Listen for changes to prefs, to update the logger switch if needed
-    mSharedPrefs.registerOnSharedPreferenceChangeListener(this);
 
     String deviceId = mSharedPrefs.getString(getString(R.string.pref_key_device_id), "");
     if (TextUtils.isEmpty(deviceId)) {
@@ -121,41 +100,28 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
     }
     findPreference(getString(R.string.pref_key_app_version))
         .setTitle(getString(R.string.app_version, version));
-/*        // Add 'notifications' preferences, and a corresponding header.
-        PreferenceCategory fakeHeader = new PreferenceCategory(this);
-        fakeHeader.setTitle(R.string.pref_header_notifications);
-        getPreferenceScreen().addPreference(fakeHeader);
-        addPreferencesFromResource(R.xml.pref_notification);
-
-        // Add 'data and sync' preferences, and a corresponding header.
-        fakeHeader = new PreferenceCategory(this);
-        fakeHeader.setTitle(R.string.pref_header_data_sync);
-        getPreferenceScreen().addPreference(fakeHeader);
-        addPreferencesFromResource(R.xml.pref_data_sync);*/
 
     // Bind the summaries of EditText/List/Dialog/Ringtone preferences to
     // their values. When their values change, their summaries are updated
     // to reflect the new value, per the Android Design guidelines.
-/*        bindPreferenceSummaryToValue(findPreference(
-            getString(R.string.pref_key_tracking_enabled)));*/
     // Ordinarily wouldn't bind on/off but need to start/stop service when changed
-    bindPreferenceSummaryToValue(findPreference(
+    listenToPreferenceChanges(findPreference(
         getString(R.string.pref_key_logging_enabled)));
-    bindPreferenceSummaryToValue(findPreference(
+    listenToPreferenceChanges(findPreference(
         getString(R.string.pref_key_feat_svc_url)));
-    bindPreferenceSummaryToValue(findPreference(
+    listenToPreferenceChanges(findPreference(
         getString(R.string.pref_key_user_id)));
-    bindPreferenceSummaryToValue(findPreference(
+    listenToPreferenceChanges(findPreference(
         getString(R.string.pref_key_user_pw)));
-    bindPreferenceSummaryToValue(findPreference(
+    listenToPreferenceChanges(findPreference(
         getString(R.string.pref_key_token_url)));
-    bindPreferenceSummaryToValue(findPreference(
+    listenToPreferenceChanges(findPreference(
         getString(R.string.pref_key_tracking_displacement)));
-    bindPreferenceSummaryToValue(findPreference(
+    listenToPreferenceChanges(findPreference(
             getString(R.string.pref_key_tracking_interval)));
-    bindPreferenceSummaryToValue(findPreference(
+    listenToPreferenceChanges(findPreference(
             getString(R.string.pref_key_sync_interval)));
-    bindPreferenceSummaryToValue(findPreference(
+    listenToPreferenceChanges(findPreference(
         getString(R.string.pref_key_device_id)));
 
   }
@@ -226,26 +192,15 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
               && value != null && value instanceof Boolean) {
             // Start/stop the tracking service
             boolean isTrackingEnabled = (boolean) value;
-            preference.setTitle(isTrackingEnabled
-                                ? R.string.pref_title_logging_enabled
-                                : R.string.pref_title_logging_disabled);
 
             if (!isTrackingEnabled) stopLogging();
             else { // Trying to start logging
-/*              EditTextPreference prefUserId = (EditTextPreference)getPreferenceScreen()
-                  .findPreference(getString(R.string.pref_key_user_id));
-              if (prefUserId.getText().isEmpty()) {
-                Toast toast = Toast.makeText(mCtx,
-                    "Please set a User ID to allow logging", Toast.LENGTH_LONG);
-                toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
-                toast.show();
-                return false;
-              }*/
               // Check that permissions have been granted
               if (checkAndRequestPermissions(REQ_PERMISSIONS_ON_STARTLOGGING))
                 startLogging();
-              else return false;
+              // Else if user grants permissions, start logging in onRequestPermissionsResult()
             }
+            return false;
           } else if (preference.getKey().equals(getString(R.string.pref_key_tracking_interval))) {
             return validateInterval(
                     preference,
@@ -321,7 +276,7 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
    *
    * @see #mBindPreferenceSummaryToValueListener
    */
-  private void bindPreferenceSummaryToValue(Preference preference) {
+  private void listenToPreferenceChanges(Preference preference) {
     // Set the listener to watch for value changes.
     preference.setOnPreferenceChangeListener(mBindPreferenceSummaryToValueListener);
 
@@ -334,21 +289,26 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
             .get(preference.getKey()));
   }
 
-
-
+  /** Do what's needed to start logging, including starting the service and setting the switch and title */
   private void startLogging() {
     SwitchPreferenceCompat prefLogging = (SwitchPreferenceCompat) getPreferenceScreen()
         .findPreference(getString(R.string.pref_key_logging_enabled));
     prefLogging.setChecked(true);
+    prefLogging.setTitle(R.string.pref_title_logging_enabled);
 
     Intent intent = new Intent();
     intent.setClass(mCtx, SvcLocationLogger.class);
     getActivity().startService(intent);
   }
 
+  /** Do what's needed to stop logging, including stopping the service and setting the switch and title */
   private void stopLogging() {
+    SwitchPreferenceCompat prefLogging = (SwitchPreferenceCompat) getPreferenceScreen()
+        .findPreference(getString(R.string.pref_key_logging_enabled));
+    prefLogging.setChecked(false);
+    prefLogging.setTitle(R.string.pref_title_logging_disabled);
+
     Intent intent = new Intent(mCtx, SvcLocationLogger.class);
-//    intent.setClass(this, SvcLocationLogger.class);
     getActivity().stopService(intent);
   }
 
@@ -371,23 +331,6 @@ public class FrgPrefs extends PreferenceFragmentCompat implements SharedPreferen
       dlg.show();
     } else if (requestCode == REQ_PERMISSIONS_ON_STARTLOGGING) {
       startLogging();
-    }
-  }
-
-  @Override
-  public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
-    if (s.equals(getString(R.string.pref_key_logging_enabled))) {
-      // Update the switch because the pref was set programmatically
-      SwitchPreferenceCompat pref = (SwitchPreferenceCompat)findPreference(s);
-      if (pref == null) return;
-
-      pref.setChecked(sharedPreferences.getBoolean(s, false));
-    } else if (s.equals(getString(R.string.pref_key_user_id))
-               || s.equals(getString(R.string.pref_key_user_pw))) { // Clear saved token info
-      SharedPreferences.Editor editor = sharedPreferences.edit();
-      editor.remove(getString(R.string.pref_key_agol_token));
-      editor.remove(getString(R.string.pref_key_agol_token_expiration_epoch));
-      editor.apply();
     }
   }
 }

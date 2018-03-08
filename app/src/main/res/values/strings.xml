@@ -25,7 +25,7 @@
           }
         }
     </string>
-    <!--<string name="exc_bad_QSFeat_params">Invalid Location and UserID when logging a QS location</string>-->
+
     <string name="log_create_success">Posted feature got response code %1$d with parameters:\\n%2$s</string>
     <string name="msg_err_location_request">
         Unable to get the device\'s location; check to make sure Google Play Services are installed and up-to-date.

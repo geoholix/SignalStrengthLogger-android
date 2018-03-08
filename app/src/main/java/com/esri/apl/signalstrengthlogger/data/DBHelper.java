@@ -16,6 +16,7 @@ public class DBHelper extends SQLiteOpenHelper {
     this.mContext = context;
   }
 
+  /** Create the initial database if needed */
   @Override
   public void onCreate(SQLiteDatabase db) {
     String sCreateTableSql = mContext.getString(R.string.table_readings_create_sql,

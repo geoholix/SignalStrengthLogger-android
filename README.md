@@ -5,7 +5,7 @@ Detects and logs cell signal strength along with device location.
 ### What is it?
 This app very simply gathers the device's location and the strength of its
 cellular connection at specified time and space intervals,
-and saves it to a Feature Service hosted on ArcGIS Online.
+and saves it to a feature service layer hosted on ArcGIS Online.
 The app is very simple in design. It has a main settings page, including a switch to
     start and stop logging location and signal strength. The main activity also
     shows a line chart of the fifteen most recent signal reading values while logging.
@@ -19,7 +19,7 @@ of detecting.
 1. Foreground (high priority) logging service<p/>
     When logging is active, a persistent notification in the status bar signals
     that the logging service is running, and also how many locally saved records
-    still need to be synchronized to the Feature Service.
+    still need to be synchronized to the feature service layer.
     The logger is implemented as a foreground
     service, meaning it should almost never be shut down for lack of resources.
     Logging will continue while other apps are open and in the foreground, or even
@@ -33,7 +33,7 @@ of detecting.
 1. Offline storage: saving to and updating a local Sqlite database<p/>
     This app is meant for use in remote areas where internet may not be available for
     much of the data collection exercise. It's important that it be able to save readings
-    on the device and then send them to the Feature Service once internet is available.
+    on the device and then send them to the feature service layer once internet is available.
     All readings are saved to a local SQLite database, and then synchronized on a schedule,
     or when internet connecivity is reestablished.
 1. Using Google Play Services Fused Location Provider<p/>
@@ -47,16 +47,16 @@ of detecting.
     as **infrequently** as possible, according to the combination of those two settings.
     You can set either time or distance to zero, if you just want to limit by one of those
     two factors. It's best not to set both to zero.
-1. Using ArcGIS REST API to save features to a Feature Service<p/>
+1. Using ArcGIS REST API to save features to a feature service layer<p/>
     This app does not use the Esri runtime for Android. It only needs to write data
-    out to a Feature Service, not to read or to map it. So it makes http POST operations
-    directly against the REST endpoint for the Feature Service. You can change this
+    out to a feature service layer, not to read or to map it. So it makes http POST operations
+    directly against the REST endpoint for the feature service layer. You can change this
     service in the settings page; note that it should include the `addFeature` portion of
     the URL.
 1. Generating tokens for updating secure feature services<p/>
     If you specify a username, password,
     and token generator URL, the app will generate and use a security token against
-     your secured Feature Service.
+     your secured feature service layer.
 1. Shared Preferences / PreferenceFragmentCompat<p/>
     All settings on the main activity are saved to persistent application settings,
     or `SharedPreferences`.
@@ -76,7 +76,7 @@ of detecting.
 I used a handful of third-party components to build this app; all are licensed under
 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 * [OKHTTP3](https://github.com/square/okhttp/tree/master/okhttp/src/main/java/okhttp3) (for POSTing
-to the Feature Service)
+to the feature service layer)
 * [MPAndroidChart](https://github.com/PhilJay/MPAndroidChart)
 * [Takisoft Android Support Preference v7 fix](https://github.com/Gericop/Android-Support-Preference-V7-Fix)
 This fixes a strange incompatibility between Android's built-in styles and the
@@ -89,8 +89,13 @@ PreferenceFragmentCompat class that causes the app to crash when they're used to
     1. Build the binary .apk installer from source code.
     1. Copy the file onto your device.
     1. Open and install the copied .apk file.
+1. Creating a hosted feature layer to hold the results<p/>
+    You'll need a hosted feature layer to hold the collected data.
+    1. Download the template file geodatabase here: https://www.arcgis.com/home/item.html?id=a6ea4b56e9914f82a2616685aef94ec0
+    1. Follow the instructions to publish it here: https://doc.arcgis.com/en/arcgis-online/share-maps/publish-features.htm#ESRI_SECTION1_F878B830119B4443A8CFDA8A96AAF7D1
 1. Settings<p/>
-    Tap the `Feature Service URL` item and enter the address of the Feature Service you've created and hosted.
+    Tap the `Feature Service URL` item and enter the address of the feature service layer you've created
+    and hosted.
     There are two settings affecting the logging frequency. You can set a distance between
     readings in meters and you can set a time between readings in seconds.
     Readings will be taken no more often than the combination of these settings.
@@ -121,7 +126,8 @@ signal strength in order to do its job. If you don't grant both these permission
 you won't be allowed to start logging.
 * If you turn off logging when you're disconnected from the internet,
 it won't be able to send any unsynchronized records to the feature service.
-Those features are still in the local database; there's a "Sync Now" button
+Those features are still in the local database; the "Sync Now" button
+should become enabled, once the device reconnects to the internet,
 to synchronize in this situation. In the worst case, you can work around this issue
 by waiting until you're back on the internet, then starting and stopping logging
 again to initiate another synchronization.

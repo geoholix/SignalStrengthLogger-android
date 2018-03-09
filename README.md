@@ -13,8 +13,8 @@ The app is very simple in design. It has a main settings page, including a switc
     other apps are running or when the display is turned off. A persistent
     notification tells the user that the logger is still active.
 ### Why build it?
-The Nature Conservancy wanted to map cellular signal strength over the new
-[Jack and Laura Dangermond Preserve](https://en.wikipedia.org/wiki/Jack_and_Laura_Dangermond_Preserve).
+This is an idea that could be adapted to log just about anything a mobile device is capable
+of detecting.
 ### Android concepts illustrated:
 1. Foreground (high priority) logging service<p/>
     When logging is active, a persistent notification in the status bar signals

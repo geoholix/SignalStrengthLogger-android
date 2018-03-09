@@ -19,7 +19,14 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    flavorDimensions "default"
     productFlavors {
+        TNC {
+        }
+        Development {
+        }
+        Public {
+        }
     }
     buildToolsVersion '27.0.3'
     compileOptions {

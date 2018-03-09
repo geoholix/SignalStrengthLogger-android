@@ -81,3 +81,50 @@ to the Feature Service)
 * [Takisoft Android Support Preference v7 fix](https://github.com/Gericop/Android-Support-Preference-V7-Fix)
 This fixes a strange incompatibility between Android's built-in styles and the
 PreferenceFragmentCompat class that causes the app to crash when they're used together.
+### To run it
+1. Installing and sideloading<p/>
+    This app will run on devices that are running Android 4.3 (the last version of "Jelly Bean") or above. It will only run on Google versions of Android--not on proprietary versions of Android, such as the Amazon Kindle Fire devices. If you're running Android 4.3 or later on a device that has the Google Play Store app, you should be able to run this. (Oh, you'll need a functional cell plan as well.)
+ You'll need to install this app through an alternative process called "sideloading".
+    1. Enable sideloading; more info on this is here: https://developer.android.com/distribute/marketing-tools/alternative-distribution.html#unknown-sources
+    1. Build the binary .apk installer from source code.
+    1. Copy the file onto your device.
+    1. Open and install the copied .apk file.
+1. Settings<p/>
+    Tap the `Feature Service URL` item and enter the address of the Feature Service you've created and hosted.
+    There are two settings affecting the logging frequency. You can set a distance between
+    readings in meters and you can set a time between readings in seconds.
+    Readings will be taken no more often than the combination of these settings.
+    For example, a setting of ten meters and ten seconds means that the next reading
+    won't be taken until the user has moved at least ten meters and at least ten seconds
+    have passed. If you want to only limit readings by distance, you can set the
+    seconds to zero. Please don't set both time and distance to zero.<p/>
+    The User ID and password settings are for using secured services.
+    Start logging by tapping the switch control at the top of the settings page. You should
+    see a fan-shaped icon (a little like the wifi icon) in the notification bar.
+    That tells you that the app is logging readings in the background.
+    It will continue logging until you tap the switch control again to turn logging off.<p/>
+    You can turn the screen off or use other apps during logging, since it runs as a
+    background service. An easy way to get back to the settings screen is to pull down
+    the notification bar and tap the logger notification item.
+    Features are logged to a local database, and then sent to the feature service when
+    the internet is available.
+### Synchronization
+There are three events that cause a synchronization:
+1. There is a setting for the synchronization interval; the app will sync whenever
+that many minutes have passed;
+1. When internet connectivity has been lost and then restored;
+1.  When the logging switch is turned off
+### Caveats
+* If you're running Android "Marshmallow" (6.0) or above, the app will ask you for
+permissions when you first start it up. It needs to get your location and the phone
+signal strength in order to do its job. If you don't grant both these permissions,
+you won't be allowed to start logging.
+* If you turn off logging when you're disconnected from the internet,
+it won't be able to send any unsynchronized records to the feature service.
+Those features are still in the local database; there's a "Sync Now" button
+to synchronize in this situation. In the worst case, you can work around this issue
+by waiting until you're back on the internet, then starting and stopping logging
+again to initiate another synchronization.
+* This was not tested on a dual-SIM system, so it may or may not work on a device
+loaded with more than one SIM. It was only tested on GSM devices (AT&T and T-Mobile).
+It should work on a Verizon plan, but no guarantees.

@@ -112,6 +112,10 @@ PreferenceFragmentCompat class that causes the app to crash when they're used to
     have passed. If you want to only limit readings by distance, you can set the
     seconds to zero. Please don't set both time and distance to zero.<p/>
     The User ID and password settings are for using secured services.
+    If you are using your own ArcGIS Enterprise Portal (not ArcGIS.com), and you want to
+    log to a secured service, you'll need to enable enter
+    [your own portal's token generator URL](https://enterprise.arcgis.com/en/server/latest/administer/windows/acquiring-arcgis-tokens.htm)
+     into the `Token Generator Service URL` setting.<p/>
     Start logging by tapping the switch control at the top of the settings page. You should
     see a fan-shaped icon (a little like the wifi icon) in the notification bar.
     That tells you that the app is logging readings in the background.

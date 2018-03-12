@@ -37,16 +37,18 @@ of detecting.
     All readings are saved to a local SQLite database, and then synchronized on a schedule,
     or when internet connecivity is reestablished.
 1. Using Google Play Services Fused Location Provider<p/>
-    Google recommends using the Fused Location Provider when possible. This makes it
-    easier to limit readings by time or by distance apart. Unfortunately, this means
+    [Google recommends using the Google Location Services API](https://developer.android.com/reference/android/location/package-summary.html)
+     when possible. This
+    provides the best combination of location accuracy and battery use, and makes it
+    easier to limit readings by time or by distance apart. This also means
     that only Google versions of Android will run this app (leaving out heavily
-    customized versions of Android such as run on Kindle Fire devices). Basically, if
+    customized versions of Android such as those on Kindle Fire devices). Basically, if
     your device has the Google Play Store app and runs Android 4.3 or higher, it should
     run this.
     The app provides settings for both time and distance between readings. Readings will be taken
     as **infrequently** as possible, according to the combination of those two settings.
     You can set either time or distance to zero, if you just want to limit by one of those
-    two factors. It's best not to set both to zero.
+    two factors. [It's best not to set both to zero](https://developers.google.com/android/reference/com/google/android/gms/location/LocationRequest.html#setInterval(long)).
 1. Using ArcGIS REST API to save features to a feature service layer<p/>
     This app does not use the Esri runtime for Android. It only needs to write data
     out to a feature service layer, not to read or to map it. So it makes http POST operations
@@ -57,9 +59,11 @@ of detecting.
     If you specify a username, password,
     and token generator URL, the app will generate and use a security token against
      your secured feature service layer.
+     The token will be saved in shared preferences until either it expires or until
+     the username or password settings are changed in the main activity.
 1. Shared Preferences / PreferenceFragmentCompat<p/>
-    All settings on the main activity are saved to persistent application settings,
-    or `SharedPreferences`.
+    All settings on the main activity are saved to persistent application settings
+    (`SharedPreferences`).
 1. Backing up & restoring data with Google backup service<p/>
     All settings except username and password are backed up to your Google account automatically.
     That means that if you uninstall and then reinstall the app on the same device
@@ -69,7 +73,7 @@ of detecting.
 1. Charting ongoing result counts<p/>
     While logging, the main activity shows a line chart of the fifteen most recent signal
     strength values. I used the [MPAndroidChart](https://github.com/PhilJay/MPAndroidChart) library
-    to do this. The service periodically broadcasts a list of the last fifteen readings;
+    to do this. When a reading is taken, the service broadcasts a list of the last fifteen readings;
      if the main activity is up and running and hasn't been killed due to non-use, it will
      receive these and display them.
 ### Third-party components and licenses
@@ -82,17 +86,21 @@ to the feature service layer)
 This fixes a strange incompatibility between Android's built-in styles and the
 PreferenceFragmentCompat class that causes the app to crash when they're used together.
 ### To run it
-1. Installing and sideloading<p/>
+1. Create a hosted feature layer to hold the results<p/>
+    You'll need a hosted feature layer to hold the collected data.
+    1. Download the template file geodatabase here: https://www.arcgis.com/home/item.html?id=a6ea4b56e9914f82a2616685aef94ec0
+    1. Follow the instructions to publish it here: https://doc.arcgis.com/en/arcgis-online/share-maps/publish-features.htm#ESRI_SECTION1_F878B830119B4443A8CFDA8A96AAF7D1
+1. Install by sideloading<p/>
     This app will run on devices that are running Android 4.3 (the last version of "Jelly Bean") or above. It will only run on Google versions of Android--not on proprietary versions of Android, such as the Amazon Kindle Fire devices. If you're running Android 4.3 or later on a device that has the Google Play Store app, you should be able to run this. (Oh, you'll need a functional cell plan as well.)
  You'll need to install this app through an alternative process called "sideloading".
+    1. (Optional) Modify the app source code to point to the feature layer you created above;
+        set this in `prefs.xml`, element `pref_default_feat_svc_url`.
+        You can skip this step and enter the feature layer item URL as outlined
+        in the *Settings* section below.
     1. Enable sideloading; more info on this is here: https://developer.android.com/distribute/marketing-tools/alternative-distribution.html#unknown-sources
     1. Build the binary .apk installer from source code.
     1. Copy the file onto your device.
     1. Open and install the copied .apk file.
-1. Creating a hosted feature layer to hold the results<p/>
-    You'll need a hosted feature layer to hold the collected data.
-    1. Download the template file geodatabase here: https://www.arcgis.com/home/item.html?id=a6ea4b56e9914f82a2616685aef94ec0
-    1. Follow the instructions to publish it here: https://doc.arcgis.com/en/arcgis-online/share-maps/publish-features.htm#ESRI_SECTION1_F878B830119B4443A8CFDA8A96AAF7D1
 1. Settings<p/>
     Tap the `Feature Service URL` item and enter the address of the feature service layer you've created
     and hosted.
@@ -114,23 +122,24 @@ PreferenceFragmentCompat class that causes the app to crash when they're used to
     Features are logged to a local database, and then sent to the feature service when
     the internet is available.
 ### Synchronization
+Synchronization is the process of copying location and signal readings from the device's
+local database up to the hosted feature layer on ArcGIS Online.
 There are three events that cause a synchronization:
-1. There is a setting for the synchronization interval; the app will sync whenever
-that many minutes have passed;
+1. There is a setting for the synchronization interval; the app will
+try to sync whenever that many minutes have passed;
 1. When internet connectivity has been lost and then restored;
-1.  When the logging switch is turned off
+1.  When the logging switch is turned off and logging stops
 ### Caveats
 * If you're running Android "Marshmallow" (6.0) or above, the app will ask you for
-permissions when you first start it up. It needs to get your location and the phone
+permissions when you first start it up. It needs to be allowed get your location and the phone
 signal strength in order to do its job. If you don't grant both these permissions,
 you won't be allowed to start logging.
 * If you turn off logging when you're disconnected from the internet,
 it won't be able to send any unsynchronized records to the feature service.
-Those features are still in the local database; the "Sync Now" button
-should become enabled, once the device reconnects to the internet,
-to synchronize in this situation. In the worst case, you can work around this issue
-by waiting until you're back on the internet, then starting and stopping logging
-again to initiate another synchronization.
+Those features are still in the local database and once the device reconnects
+to the internet, the "Sync Now" button should become enabled to let you start a
+synchronization in this situation. In the worst case, you can start and stop logging
+to initiate another synchronization.
 * This was not tested on a dual-SIM system, so it may or may not work on a device
 loaded with more than one SIM. It was only tested on GSM devices (AT&T and T-Mobile).
-It should work on a Verizon plan, but no guarantees.
+It *should* work on a Verizon plan, but there are no guarantees.

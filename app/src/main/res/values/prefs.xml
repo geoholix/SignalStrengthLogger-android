@@ -1,6 +1,6 @@
 <resources>
 
-    <!-- Strings related to Settings -->
+    <!-- Strings related to Preference fragment in main activity -->
 
     <!-- General settings -->
     <string name="pref_key_app_version">app_version</string>

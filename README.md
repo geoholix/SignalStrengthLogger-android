@@ -126,7 +126,9 @@ PreferenceFragmentCompat class that causes the app to crash when they're used to
     It will continue logging until you tap the switch control again to turn logging off. As it
     logs, the main activity will show a line chart with the last fifteen signal strength
     readings.
-    ![Logging with chart](https://github.com/markdeaton/SignalStrengthLogger-android/blob/master/README-screenshots/Screenshot_20180312-112638.png)<p/>
+    <br/>
+    ![Logging with chart](https://github.com/markdeaton/SignalStrengthLogger-android/blob/master/README-screenshots/Screenshot_20180312-112638.png)
+    <p/>
     You can turn the screen off or use other apps during logging, since it runs as a
     background service. An easy way to get back to the settings screen is to pull down
     the notification bar and tap the logger notification item.

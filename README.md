@@ -102,6 +102,8 @@ PreferenceFragmentCompat class that causes the app to crash when they're used to
     1. Copy the file onto your device.
     1. Open and install the copied .apk file.
 1. Settings<p/>
+    ![Settings in main activity](https://github.com/markdeaton/SignalStrengthLogger-android/blob/master/README-screenshots/Screenshot_20180312-113859.png)
+    <br/>
     Tap the `Feature Service URL` item and enter the address of the feature service layer you've created
     and hosted.
     There are two settings affecting the logging frequency. You can set a distance between
@@ -119,7 +121,12 @@ PreferenceFragmentCompat class that causes the app to crash when they're used to
     Start logging by tapping the switch control at the top of the settings page. You should
     see a fan-shaped icon (a little like the wifi icon) in the notification bar.
     That tells you that the app is logging readings in the background.
-    It will continue logging until you tap the switch control again to turn logging off.<p/>
+    ![Logger notification](https://github.com/markdeaton/SignalStrengthLogger-android/blob/master/README-screenshots/Screenshot_20180312-112536.png)
+    <br/>
+    It will continue logging until you tap the switch control again to turn logging off. As it
+    logs, the main activity will show a line chart with the last fifteen signal strength
+    readings.
+    ![Logging with chart](https://github.com/markdeaton/SignalStrengthLogger-android/blob/master/README-screenshots/Screenshot_20180312-112638.png)<p/>
     You can turn the screen off or use other apps during logging, since it runs as a
     background service. An easy way to get back to the settings screen is to pull down
     the notification bar and tap the logger notification item.

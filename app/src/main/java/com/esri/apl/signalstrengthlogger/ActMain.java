@@ -2,6 +2,7 @@ package com.esri.apl.signalstrengthlogger;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -12,6 +13,7 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -30,6 +32,8 @@ import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +42,7 @@ import io.fabric.sdk.android.Fabric;
 
 public class ActMain extends AppCompatActivity {
   public final static String TAG = "ActMain";
+  private final int REQ_MAKE_GOOGLE_APIS_AVAILABLE = 1;
   private LineChart mSignalChart;
   private View mLytSignalChart;
   private TextView mLblUnsyncedRecords;
@@ -55,6 +60,7 @@ public class ActMain extends AppCompatActivity {
   @Override
   protected void onCreate(@Nullable Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+
     Fabric.with(this, new Crashlytics());
 
     setContentView(R.layout.act_main);
@@ -170,8 +176,26 @@ public class ActMain extends AppCompatActivity {
   @Override
   protected void onResume() {
     super.onResume();
-    // Get # unposted
-    if (mDb != null) {
+
+    // Check to make sure Google Play Services is available
+    GoogleApiAvailability gaa = GoogleApiAvailability.getInstance();
+    int err = gaa.isGooglePlayServicesAvailable(this);
+    if (err != ConnectionResult.SUCCESS) {
+        new AlertDialog.Builder(this)
+            .setMessage(R.string.msg_err_play_svcs_unavailable)
+            .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+              @Override
+              public void onClick(DialogInterface dialogInterface, int i) {
+                finish();
+              }
+            })
+            .create()
+            .show();
+    }
+
+
+
+    if (mDb != null) { // Get # unposted
       long unposted = DBUtils.getUnpostedRecordsCount(mDb, this);
       set_unsyncedRecordCount(unposted);
     }

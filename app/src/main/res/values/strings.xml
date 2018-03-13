@@ -30,6 +30,10 @@
     <string name="msg_err_location_request">
         Unable to get the device\'s location; check to make sure Google Play Services are installed and up-to-date.
     </string>
+    <string name="msg_err_play_svcs_unavailable">
+        Google Play Services is not installed, is disabled, or is out of date. Please go into
+        your system app settings and make sure it is available.
+    </string>
     <string name="title_err_synchronization">Problem during synchronization</string>
     <string name="msg_err_synchronization">
         Couldn\'t sync to the feature service.\n

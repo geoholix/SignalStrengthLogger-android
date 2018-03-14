@@ -33,3 +33,10 @@
 -keepattributes SourceFile,LineNumberTable
 
 -keep public class * extends android.app.backup.BackupAgent
+
+# Strip some logging statements from release builds
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int d(...);
+    }

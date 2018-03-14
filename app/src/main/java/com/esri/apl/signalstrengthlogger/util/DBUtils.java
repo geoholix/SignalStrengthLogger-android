@@ -161,7 +161,7 @@ public class DBUtils {
     // Otherwise, parse the results
     JSONArray addResults = res.getJSONArray("addResults");
 
-    final int rowIdCol = cur.getColumnIndex("rowid");
+    final int rowIdCol = cur.getColumnIndex(ctx.getString(R.string.columnname_rowid));
 
     cur.moveToFirst();
     for (int iRes = 0; iRes < addResults.length(); iRes++) {

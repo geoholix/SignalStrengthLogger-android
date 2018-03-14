@@ -62,6 +62,7 @@ public class SvcLocationLogger extends Service {
   private static final int SVC_NOTIF_ID = 1;
   private static final int SYNC_ERR_NOTIF_ID = 2;
   private static final int DB_ERR_NOTIF_ID = 3;
+  private static final int LOC_ERR_NOTIF_ID = 4;
   private static final int ACT_PI_REQ_CODE = 1;
   private static final String TAG = "SvcLocationLogger";
   private static final int MS_PER_S = 1000;
@@ -196,6 +197,7 @@ public class SvcLocationLogger extends Service {
       @Override
       public void onFailure(@NonNull Exception e) {
         Log.e(TAG, "Error requesting updates", e);
+        showErrorNotification(LOC_ERR_NOTIF_ID, getString(R.string.msg_err_location_request));
         // Stop logging and stop the service entirely
         stopSelf();
       }
@@ -213,9 +215,8 @@ public class SvcLocationLogger extends Service {
     int iSyncMS = iSyncMins * MS_PER_S * S_PER_MIN;
 
     mSyncTimer.schedule(new TTSyncToFC(), iSyncMS, iSyncMS);
-    Log.d(TAG, "Sync every " + iSyncMS + " ms");
 
-    Log.d(TAG, "startLogging");
+    Log.d(TAG, "startLogging every " + iSyncMS + " ms");
   }
 
   /** Called when user has opted to stop logging and the main app has stopped the service.

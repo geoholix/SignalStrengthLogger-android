@@ -15,6 +15,9 @@ The app is very simple in design. It has a main settings page, including a switc
 ### Why build it?
 This is an idea that could be adapted to log just about anything a mobile device is capable
 of detecting.
+### Requirements
+* Android Studio 3+
+* An Android device running Android 18 or above (JellyBean 4.3) and having GPS hardware
 ### Android concepts illustrated:
 1. Foreground (high priority) logging service<p/>
     When logging is active, a persistent notification in the status bar signals

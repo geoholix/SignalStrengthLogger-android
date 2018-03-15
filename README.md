@@ -105,7 +105,7 @@ PreferenceFragmentCompat class that causes the app to crash when they're used to
     1. Copy the file onto your device.
     1. Open and install the copied .apk file.
 1. Settings<p/>
-    ![Settings in main activity](https://github.com/markdeaton/SignalStrengthLogger-android/blob/master/README-screenshots/Screenshot_20180312-113859.png | width=270)
+    ![Settings in main activity](https://github.com/markdeaton/SignalStrengthLogger-android/blob/master/README-screenshots/Screenshot_20180312-113859.png)
     <br/>
     Tap the `Feature Service URL` item and enter the address of the feature service layer you've created
     and hosted.

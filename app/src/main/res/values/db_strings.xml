@@ -10,6 +10,7 @@
     <string name="columnname_longitude">x</string>
     <string name="columnname_latitude">y</string>
     <string name="columnname_altitude">z</string>
+    <!--TODO Change this if you want to change the database schema and what's being recorded-->
     <string name="columnname_signalstrength">signal_strength</string>
     <string name="columnname_date">date</string>
     <string name="columnname_osname">os_name</string>

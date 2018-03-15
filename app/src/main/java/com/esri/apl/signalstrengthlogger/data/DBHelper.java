@@ -16,6 +16,7 @@ public class DBHelper extends SQLiteOpenHelper {
     this.mContext = context;
   }
 
+// TODO Change this if you want to change the database schema and what's being recorded
   /** Create the initial database if needed */
   @Override
   public void onCreate(SQLiteDatabase db) {

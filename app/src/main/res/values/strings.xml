@@ -6,6 +6,7 @@
     <string name="notif_chan_id">com.esri.apl.signalstrengthlogger</string>
     <string name="notif_chan_name">Signal Strength Logger</string>
 
+    <!-- TODO Change this if you want to change the database schema and what's being recorded -->
     <string name="add_one_feature_json">
         {
           \"geometry\" : {

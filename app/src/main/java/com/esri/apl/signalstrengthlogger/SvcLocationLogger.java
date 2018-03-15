@@ -225,40 +225,46 @@ public class SvcLocationLogger extends Service {
     // Stop synchronizing on a timer
     mSyncTimer.cancel();
 
-    // Sync updates to feature class
-    Thread syncThread = syncRecordsToFCNow();
+    new Thread(new Runnable() {
+      @Override
+      public void run() {
+        // Sync updates to feature class
+        Thread syncThread = syncRecordsToFCNow();
 
-    // Stop listening to internet connectivity changes
-    unregisterReceiver(mConnectivityStatusReceiver);
+        // Stop listening to internet connectivity changes
+        unregisterReceiver(mConnectivityStatusReceiver);
 
-    // Stop listening to location updates
-    mFusedLocationClient.removeLocationUpdates(mLocationListener);
+        // Stop listening to location updates
+        mFusedLocationClient.removeLocationUpdates(mLocationListener);
 
-    if (mSharedPrefs.getBoolean(getString(R.string.pref_key_logging_enabled), true))
-      mSharedPrefs.edit()
-          .putBoolean(getString(R.string.pref_key_logging_enabled), false)
-          .apply();
+        if (mSharedPrefs.getBoolean(getString(R.string.pref_key_logging_enabled), true))
+          mSharedPrefs.edit()
+              .putBoolean(getString(R.string.pref_key_logging_enabled), false)
+              .apply();
 
-    // Close database resources; unfortunately, syncing is done on a worker thread, and we
-    // don't want to close the database before syncing finishes
-    try {
-      // TODO Find a way to do the final sync without waiting here
-      syncThread.join();
+        // Close database resources; unfortunately, syncing is done on a worker thread, and we
+        // don't want to close the database before syncing finishes
+        try {
+          // Surrounding thread allows final sync without freezing the UI here
+          syncThread.join();
 
-      if (mDb != null && mDb.isOpen()) {
-        mDb.close();
-        mDb = null;
+          if (mDb != null && mDb.isOpen()) {
+            mDb.close();
+            mDb = null;
+          }
+          // Cleanup
+          SQLiteDatabase.releaseMemory();
+        } catch (InterruptedException e) {
+          Log.e(TAG, "Error waiting for sync thread", e);
+        }
+
+        // Clear the persistent logger notification
+        NotificationManagerCompat.from(SvcLocationLogger.this).cancel(SVC_NOTIF_ID);
+
+        Log.d(TAG, "stopLogging");
+
       }
-      // Cleanup
-      SQLiteDatabase.releaseMemory();
-    } catch (InterruptedException e) {
-      Log.e(TAG, "Error waiting for sync thread", e);
-    }
-
-    // Clear the persistent logger notification
-    NotificationManagerCompat.from(this).cancel(SVC_NOTIF_ID);
-
-    Log.d(TAG, "stopLogging");
+    }).start();
   }
 
   /** Here's where logging is done: when a location update is received. */
@@ -278,6 +284,7 @@ public class SvcLocationLogger extends Service {
             double y = loc.getLatitude();
             double z = loc.getAltitude();
 
+            // TODO Change this if you want to change the database schema and what's being recorded
             // Save reading to DB
             ContentValues vals = new ContentValues();
             vals.put(getString(R.string.columnname_signalstrength), signalStrength);

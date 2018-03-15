@@ -3,6 +3,7 @@ package com.esri.apl.signalstrengthlogger.data;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+// TODO Change this if you want to change the database schema and what's being recorded
 /**
  * Class representing a single signal strength reading.
  * Parcelable for sending from service to main activity for charting.

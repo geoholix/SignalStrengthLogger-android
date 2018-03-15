@@ -52,6 +52,7 @@ public class DBUtils {
     if (param == Float.NaN) return "null";
     else return Float.toString(param); //String.format("%f", param);
   }
+  // TODO Change this if you want to change the database schema and what's being recorded
   public static String jsonForOneFeature(Context ctx,
                                           double x, double y, double z, float signal, long dateTime,
                                           String osName, String osVersion, String phoneModel,
@@ -96,6 +97,7 @@ public class DBUtils {
         null, null, null);
   }
 
+// TODO Change this if you want to change the database schema and what's being recorded
   /** Here's where locally cached records get posted up to the REST based Feature Service.
    * @param cur SQLite DB cursor to list of unposted records
    * @param ctx Service context

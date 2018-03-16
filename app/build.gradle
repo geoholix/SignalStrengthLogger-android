@@ -28,7 +28,7 @@ android {
         Public {
         }
     }
-    buildToolsVersion '27.0.3'
+//    buildToolsVersion '27.0.3' - android Gradle plugin 3.0.0+ removes the need for this
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -40,13 +40,13 @@ dependencies {
     implementation 'com.google.android.gms:play-services-location:11.8.0'
     implementation 'com.android.support.constraint:constraint-layout:1.1.0-beta5'
     //noinspection GradleCompatible
-    implementation 'com.android.support:design:26.1.0'
-    implementation 'com.android.support:support-v4:26.1.0'
-    implementation 'com.android.support:preference-v7:26.1.0'
-    implementation 'com.takisoft.fix:preference-v7:27.0.2.0'
+    implementation 'com.android.support:design:27.1.0'
+    implementation 'com.android.support:support-v4:27.1.0'
+    implementation 'com.android.support:preference-v7:27.1.0'
+    implementation 'com.takisoft.fix:preference-v7:27.1.0.0'
     implementation 'com.squareup.okhttp3:okhttp:3.9.1'
     implementation 'com.github.PhilJay:MPAndroidChart:v3.0.3'
-    compile('com.crashlytics.sdk.android:crashlytics:2.8.0@aar') {
+    implementation ('com.crashlytics.sdk.android:crashlytics:2.9.1@aar') {
         transitive = true
     }
 }

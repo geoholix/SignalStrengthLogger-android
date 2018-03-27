@@ -9,8 +9,8 @@ android {
         applicationId "com.esri.apl.signalstrengthlogger"
         minSdkVersion 18
         targetSdkVersion 25
-        versionCode 10
-        versionName '0.7.8'
+        versionCode 11
+        versionName '0.7.9'
     }
     buildTypes {
         release {
@@ -37,9 +37,8 @@ android {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation 'com.google.android.gms:play-services-location:11.8.0'
-    implementation 'com.android.support.constraint:constraint-layout:1.1.0-beta5'
-    //noinspection GradleCompatible
+    implementation 'com.google.android.gms:play-services-location:12.0.0'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.0-beta6'
     implementation 'com.android.support:design:27.1.0'
     implementation 'com.android.support:support-v4:27.1.0'
     implementation 'com.android.support:preference-v7:27.1.0'

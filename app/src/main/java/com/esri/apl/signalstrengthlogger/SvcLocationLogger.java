@@ -42,6 +42,7 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
 
@@ -114,7 +115,7 @@ public class SvcLocationLogger extends Service {
     mDeviceId = mSharedPrefs.getString(getString(R.string.pref_key_device_id), null);
 
     // This creates the API client, but doesn't call connect.
-    mFusedLocationClient = new FusedLocationProviderClient(this);
+    mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
     mTelMgr = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
 
     mConnectivityManager = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -187,7 +188,7 @@ public class SvcLocationLogger extends Service {
     int iDisp = Integer.parseInt(sDisp);
     String sInterval = mSharedPrefs.getString(getString(R.string.pref_key_tracking_interval), "5");
     int iInterval = Integer.parseInt(sInterval);
-    LocationRequest locReq = (new LocationRequest())
+    LocationRequest locReq = (LocationRequest.create())
         .setInterval(iInterval * MS_PER_S)
         .setSmallestDisplacement(iDisp)
         .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
